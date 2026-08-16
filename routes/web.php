@@ -1,0 +1,72 @@
+<?php
+
+use App\Http\Controllers\Admin\ApiFootballController;
+use App\Http\Controllers\Admin\ArticleController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FixtureController as AdminFixtureController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicController;
+use Illuminate\Support\Facades\Route;
+
+/* ---------------- Публичная часть ---------------- */
+Route::get('/', [PublicController::class, 'home'])->name('home');
+Route::get('/news/{article}', [PublicController::class, 'show'])->name('article.show');
+Route::get('/category/{slug}', [PublicController::class, 'category'])->name('category');
+
+Route::get('/fixtures/international', [PublicController::class, 'internationalFixtures'])
+    ->name('fixtures.international');
+Route::get('/fixtures', [PublicController::class, 'fixtures'])->name('fixtures');
+Route::get('/table', [PublicController::class, 'table'])->name('table');
+Route::get('/transfers', [PublicController::class, 'transfers'])->name('transfers');
+
+/* ---------------- Админка ---------------- */
+Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('run/scrape-news', [DashboardController::class, 'scrapeNews'])->name('run.scrapeNews');
+    Route::post('run/edit-pending', [DashboardController::class, 'editPending'])->name('run.editPending');
+    Route::post('run/scrape-fixtures', [DashboardController::class, 'scrapeFixtures'])->name('run.scrapeFixtures');
+    Route::post('run/sync-standings', [DashboardController::class, 'syncStandings'])->name('run.syncStandings');
+    Route::post('run/sync-transfers', [DashboardController::class, 'syncTransfers'])->name('run.syncTransfers');
+
+    Route::get('articles', [ArticleController::class, 'index'])->name('articles');
+    Route::get('articles/{article}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
+    Route::post('articles/{article}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');
+    Route::put('articles/{article}', [ArticleController::class, 'update'])->name('articles.update');
+    Route::post('articles/{article}/publish', [ArticleController::class, 'publish'])->name('articles.publish');
+    Route::post('articles/{article}/unpublish', [ArticleController::class, 'unpublish'])->name('articles.unpublish');
+    Route::delete('articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy');
+
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories');
+    Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::put('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+
+    Route::get('fixtures', [AdminFixtureController::class, 'index'])->name('fixtures');
+    Route::get('fixtures/create', [AdminFixtureController::class, 'create'])->name('fixtures.create');
+    Route::post('fixtures', [AdminFixtureController::class, 'store'])->name('fixtures.store');
+    Route::get('fixtures/{fixture}/edit', [AdminFixtureController::class, 'edit'])->name('fixtures.edit');
+    Route::put('fixtures/{fixture}', [AdminFixtureController::class, 'update'])->name('fixtures.update');
+    Route::delete('fixtures/{fixture}', [AdminFixtureController::class, 'destroy'])->name('fixtures.destroy');
+
+    Route::get('api-football', [ApiFootballController::class, 'index'])->name('apifootball');
+    Route::put('api-football', [ApiFootballController::class, 'update'])->name('apifootball.update');
+    Route::post('api-football/test', [ApiFootballController::class, 'test'])->name('apifootball.test');
+
+    Route::get('settings', [SettingController::class, 'edit'])->name('settings');
+    Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
+});
+
+/* ---------------- Breeze auth ---------------- */
+Route::get('/dashboard', fn () => redirect()->route('admin.dashboard'))
+    ->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__ . '/auth.php';
