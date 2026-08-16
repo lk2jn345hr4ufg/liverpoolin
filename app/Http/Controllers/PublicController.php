@@ -40,9 +40,28 @@ class PublicController extends Controller
         return view('public.category', compact('category', 'articles', 'categories'));
     }
 
-    public function show(Article $article)
+    /**
+     * Показ статьи по ЧПУ-слагу.
+     *
+     * Резолвим по числовому id из начала слага — это устойчиво к любым
+     * расхождениям в хвосте (напр. если заголовок отредактировали).
+     * Если пришёл «неканоничный» slug, делаем 301-редирект на правильный,
+     * что заодно закрывает старые ссылки вида /news/2.
+     */
+    public function show(string $slug)
     {
+        $id = Article::idFromSlug($slug);
+
+        abort_if($id === null, 404);
+
+        $article = Article::findOrFail($id);
+
         abort_unless($article->status === 'published', 404);
+
+        // Каноничный URL — редиректим, если пришли по устаревшему/битому слагу.
+        if ($slug !== $article->getRouteKey()) {
+            return redirect()->route('article.show', $article, 301);
+        }
 
         $article->load('category');
         $categories = Category::ordered()->get();
@@ -120,16 +139,12 @@ class PublicController extends Controller
         ]);
     }
 
-    /**
-     * Трансферы. ?season=2026 и ?dir=in|out — фильтры.
-     */
     public function transfers()
     {
         $seasons = Transfer::seasons();
         $season  = request('season');
         $dir     = request('dir');
 
-        // Пустое значение = «все сезоны».
         if (filled($season) && ! $seasons->contains((int) $season)) {
             $season = null;
         }
@@ -141,7 +156,6 @@ class PublicController extends Controller
 
         $transfers = (clone $query)->get();
 
-        // Счётчики считаем по выбранному сезону, но без фильтра направления.
         $base = Transfer::query()->when(filled($season), fn ($q) => $q->where('season', (int) $season));
 
         return view('public.transfers', [

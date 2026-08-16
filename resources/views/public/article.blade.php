@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    @include('public.partials.head', ['title' => $article->displayTitle() . ' — LiverpoolIn'])
+    @include('public.partials.head', [
+        'title'       => $article->displayTitle() . ' — LiverpoolIn',
+        'description' => \Illuminate\Support\Str::limit(strip_tags($article->edited_content), 160),
+        'image'       => $article->image_url,
+        'canonical'   => route('article.show', $article),
+        'ogType'      => 'article',
+    ])
     <style>
         body{line-height:1.6}
         .narrow{max-width:760px;margin:0 auto;padding:0 20px}
@@ -16,6 +22,21 @@
         .source a{color:var(--red);font-weight:700}
         .back{display:inline-block;margin:0 0 40px;font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--red)}
     </style>
+
+    {{-- Разметка Schema.org NewsArticle — помогает поисковикам --}}
+    <script type="application/ld+json">
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type'    => 'NewsArticle',
+        'headline' => $article->displayTitle(),
+        'datePublished' => optional($article->published_at)->toAtomString(),
+        'dateModified'  => optional($article->edited_at ?? $article->published_at)->toAtomString(),
+        'image'    => $article->image_url ? [$article->image_url] : [],
+        'author'   => ['@type' => 'Organization', 'name' => 'LiverpoolIn'],
+        'publisher'=> ['@type' => 'Organization', 'name' => 'LiverpoolIn'],
+        'mainEntityOfPage' => route('article.show', $article),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
+    </script>
 </head>
 <body>
 
@@ -23,7 +44,7 @@
 
 <div class="narrow">
     <article>
-        @if($article->image_url)<div class="hero"><img src="{{ $article->image_url }}" alt=""></div>@endif
+        @if($article->image_url)<div class="hero"><img src="{{ $article->image_url }}" alt="{{ $article->displayTitle() }}"></div>@endif
         <div class="abody">
             @if($article->category)
                 <a href="{{ route('category', $article->category->slug) }}">

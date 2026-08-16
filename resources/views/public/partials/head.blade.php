@@ -1,7 +1,33 @@
-{{-- Общие стили и шапка публичной части. Подключается через @include('public.partials.head', ['title' => '...']) --}}
+{{-- Общие стили и SEO-мета публичной части.
+     Подключение: @include('public.partials.head', [
+         'title' => '...',
+         'description' => '...',   // опционально
+         'image' => '...',         // опционально, для Open Graph
+         'canonical' => '...',     // опционально
+     ]) --}}
+@php
+    $metaTitle = $title ?? 'LiverpoolIn — новости «Ливерпуля»';
+    $metaDesc  = $description ?? 'Новости, расписание, турнирная таблица и трансферы «Ливерпуля» — на русском, каждый день.';
+    $metaDesc  = \Illuminate\Support\Str::limit(trim(strip_tags($metaDesc)), 160);
+    $canonical = $canonical ?? url()->current();
+@endphp
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ $title ?? 'LiverpoolIn' }}</title>
+<title>{{ $metaTitle }}</title>
+
+<meta name="description" content="{{ $metaDesc }}">
+<link rel="canonical" href="{{ $canonical }}">
+
+{{-- Open Graph — для превью в соцсетях и мессенджерах --}}
+<meta property="og:type" content="{{ ($ogType ?? null) ?: 'website' }}">
+<meta property="og:site_name" content="LiverpoolIn">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="{{ $metaTitle }}">
+<meta property="og:description" content="{{ $metaDesc }}">
+<meta property="og:url" content="{{ $canonical }}">
+@isset($image)<meta property="og:image" content="{{ $image }}">@endisset
+<meta name="twitter:card" content="{{ isset($image) ? 'summary_large_image' : 'summary' }}">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

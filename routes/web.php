@@ -8,11 +8,16 @@ use App\Http\Controllers\Admin\FixtureController as AdminFixtureController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 /* ---------------- Публичная часть ---------------- */
 Route::get('/', [PublicController::class, 'home'])->name('home');
-Route::get('/news/{article}', [PublicController::class, 'show'])->name('article.show');
+
+// ЧПУ: /news/2-zagolovok-statyi. Резолвим по id внутри контроллера,
+// поэтому параметр — строка, а не {article}.
+Route::get('/news/{slug}', [PublicController::class, 'show'])->name('article.show');
+
 Route::get('/category/{slug}', [PublicController::class, 'category'])->name('category');
 
 Route::get('/fixtures/international', [PublicController::class, 'internationalFixtures'])
@@ -20,6 +25,10 @@ Route::get('/fixtures/international', [PublicController::class, 'internationalFi
 Route::get('/fixtures', [PublicController::class, 'fixtures'])->name('fixtures');
 Route::get('/table', [PublicController::class, 'table'])->name('table');
 Route::get('/transfers', [PublicController::class, 'transfers'])->name('transfers');
+
+// SEO
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots');
 
 /* ---------------- Админка ---------------- */
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
@@ -31,13 +40,15 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('run/sync-standings', [DashboardController::class, 'syncStandings'])->name('run.syncStandings');
     Route::post('run/sync-transfers', [DashboardController::class, 'syncTransfers'])->name('run.syncTransfers');
 
+    // В админке статьи резолвим ПО ID (:id), а не по slug, чтобы ссылки
+    // в панели не зависели от заголовка и не редиректили.
     Route::get('articles', [ArticleController::class, 'index'])->name('articles');
-    Route::get('articles/{article}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
-    Route::post('articles/{article}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');
-    Route::put('articles/{article}', [ArticleController::class, 'update'])->name('articles.update');
-    Route::post('articles/{article}/publish', [ArticleController::class, 'publish'])->name('articles.publish');
-    Route::post('articles/{article}/unpublish', [ArticleController::class, 'unpublish'])->name('articles.unpublish');
-    Route::delete('articles/{article}', [ArticleController::class, 'destroy'])->name('articles.destroy');
+    Route::get('articles/{article:id}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
+    Route::post('articles/{article:id}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');
+    Route::put('articles/{article:id}', [ArticleController::class, 'update'])->name('articles.update');
+    Route::post('articles/{article:id}/publish', [ArticleController::class, 'publish'])->name('articles.publish');
+    Route::post('articles/{article:id}/unpublish', [ArticleController::class, 'unpublish'])->name('articles.unpublish');
+    Route::delete('articles/{article:id}', [ArticleController::class, 'destroy'])->name('articles.destroy');
 
     Route::get('categories', [CategoryController::class, 'index'])->name('categories');
     Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
