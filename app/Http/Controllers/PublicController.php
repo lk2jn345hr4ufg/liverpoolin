@@ -40,14 +40,6 @@ class PublicController extends Controller
         return view('public.category', compact('category', 'articles', 'categories'));
     }
 
-    /**
-     * Показ статьи по ЧПУ-слагу.
-     *
-     * Резолвим по числовому id из начала слага — это устойчиво к любым
-     * расхождениям в хвосте (напр. если заголовок отредактировали).
-     * Если пришёл «неканоничный» slug, делаем 301-редирект на правильный,
-     * что заодно закрывает старые ссылки вида /news/2.
-     */
     public function show(string $slug)
     {
         $id = Article::idFromSlug($slug);
@@ -58,7 +50,6 @@ class PublicController extends Controller
 
         abort_unless($article->status === 'published', 404);
 
-        // Каноничный URL — редиректим, если пришли по устаревшему/битому слагу.
         if ($slug !== $article->getRouteKey()) {
             return redirect()->route('article.show', $article, 301);
         }
@@ -88,23 +79,68 @@ class PublicController extends Controller
             'title'        => 'Расписание',
             'intro'        => 'Все матчи «Ливерпуля» в сезоне — прошедшие и предстоящие.',
             'isIntl'       => false,
+            'seasons'      => collect(),
+            'activeSeason' => null,
+            'intlComps'    => collect(),
         ]);
     }
 
+    /**
+     * Международные (еврокубковые) матчи с навигацией по сезонам.
+     *
+     * ?season=2024 — сезон (год старта); ?comp=... — фильтр по турниру.
+     * Сезон определяется по дате матча: июль–июнь.
+     */
     public function internationalFixtures()
     {
-        $all = Fixture::international()->orderBy('kickoff_at')->get();
+        $base = Fixture::international();
+
+        // Все матчи еврокубков — чтобы вычислить доступные сезоны и турниры.
+        $everything = (clone $base)->orderBy('kickoff_at')->get();
+
+        $seasons = $everything
+            ->map(fn ($f) => $this->seasonOf($f))
+            ->filter()
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        // Активный сезон: из запроса, иначе самый свежий.
+        $activeSeason = request('season');
+        $activeSeason = ($activeSeason !== null && $seasons->contains((int) $activeSeason))
+            ? (int) $activeSeason
+            : $seasons->first();
+
+        $activeComp = request('comp');
+
+        $filtered = $everything
+            ->when($activeSeason !== null, fn ($c) => $c->filter(fn ($f) => $this->seasonOf($f) === $activeSeason))
+            ->when($activeComp, fn ($c) => $c->filter(fn ($f) => $f->competition === $activeComp))
+            ->values();
+
+        // Турниры, представленные в выбранном сезоне.
+        $intlComps = $everything
+            ->when($activeSeason !== null, fn ($c) => $c->filter(fn ($f) => $this->seasonOf($f) === $activeSeason))
+            ->pluck('competition')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $nextIntl = $everything->first(fn ($f) => $f->kickoff_at && $f->kickoff_at->isFuture());
 
         return view('public.fixtures', [
-            'grouped'      => $this->groupByMonth($all),
-            'competitions' => $all->pluck('competition')->filter()->unique()->values(),
-            'activeComp'   => null,
-            'nextFixture'  => $all->first(fn ($f) => $f->kickoff_at && $f->kickoff_at->isFuture()),
-            'stats'        => $this->summarise($all),
+            'grouped'      => $this->groupByMonth($filtered),
+            'competitions' => collect(),   // не используется в intl-режиме
+            'activeComp'   => $activeComp,
+            'nextFixture'  => $nextIntl,
+            'stats'        => $this->summarise($filtered),
             'categories'   => Category::ordered()->get(),
             'title'        => 'Международные матчи',
-            'intro'        => 'Еврокубки и международные турниры: Лига чемпионов, Лига Европы, Суперкубок УЕФА, клубный чемпионат мира.',
+            'intro'        => 'Еврокубки «Ливерпуля»: Лига чемпионов, Лига Европы, Лига конференций и Суперкубок УЕФА.',
             'isIntl'       => true,
+            'seasons'      => $seasons,
+            'activeSeason' => $activeSeason,
+            'intlComps'    => $intlComps,
         ]);
     }
 
@@ -156,7 +192,7 @@ class PublicController extends Controller
 
         $transfers = (clone $query)->get();
 
-        $base = Transfer::query()->when(filled($season), fn ($q) => $q->where('season', (int) $season));
+        $baseT = Transfer::query()->when(filled($season), fn ($q) => $q->where('season', (int) $season));
 
         return view('public.transfers', [
             'transfers'  => $transfers,
@@ -166,13 +202,25 @@ class PublicController extends Controller
             'seasons'    => $seasons,
             'season'     => $season ? (int) $season : null,
             'dir'        => in_array($dir, ['in', 'out'], true) ? $dir : null,
-            'countIn'    => (clone $base)->where('direction', 'in')->count(),
-            'countOut'   => (clone $base)->where('direction', 'out')->count(),
+            'countIn'    => (clone $baseT)->where('direction', 'in')->count(),
+            'countOut'   => (clone $baseT)->where('direction', 'out')->count(),
             'categories' => Category::ordered()->get(),
         ]);
     }
 
     /* -------- helpers -------- */
+
+    /** Сезон матча по дате: июль–декабрь → текущий год, январь–июнь → минус год. */
+    private function seasonOf(Fixture $f): ?int
+    {
+        if (! $f->kickoff_at) {
+            return null;
+        }
+
+        return $f->kickoff_at->month >= 7
+            ? $f->kickoff_at->year
+            : $f->kickoff_at->year - 1;
+    }
 
     private function groupByMonth($fixtures)
     {

@@ -7,6 +7,8 @@ use App\Models\Article;
 use App\Models\Fixture;
 use App\Models\Standing;
 use App\Models\Transfer;
+use App\Services\FootballDataClient;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 
 class DashboardController extends Controller
@@ -30,8 +32,13 @@ class DashboardController extends Controller
 
         $transferCount = Transfer::count();
 
+        // Годы для выпадающего списка загрузки еврокубков.
+        $currentSeason = now()->month >= 7 ? now()->year : now()->year - 1;
+        $euroSeasons = range($currentSeason, $currentSeason - 6);
+
         return view('admin.dashboard', compact(
-            'stats', 'recent', 'nextFixture', 'lfcRow', 'season', 'transferCount'
+            'stats', 'recent', 'nextFixture', 'lfcRow', 'season', 'transferCount',
+            'euroSeasons', 'currentSeason'
         ));
     }
 
@@ -68,5 +75,32 @@ class DashboardController extends Controller
         Artisan::call('transfers:sync');
 
         return back()->with('ok', 'Синхронизация трансферов: ' . trim(Artisan::output()));
+    }
+
+    /** Загрузка еврокубков за выбранный год. */
+    public function syncEuro(Request $request)
+    {
+        $data = $request->validate([
+            'season' => 'required|integer|min:2000|max:2100',
+        ]);
+
+        try {
+            $client = new FootballDataClient();
+            $r = $client->syncEuro((int) $data['season']);
+
+            $parts = [];
+            foreach ($r['per'] as $name => $count) {
+                $parts[] = "{$name}: {$count}";
+            }
+
+            return back()->with('ok', sprintf(
+                'Еврокубки за сезон %d — %s. Всего загружено: %d.',
+                $data['season'],
+                implode(', ', $parts),
+                $r['total']
+            ));
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }

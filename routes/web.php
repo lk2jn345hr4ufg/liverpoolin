@@ -13,11 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 /* ---------------- Публичная часть ---------------- */
 Route::get('/', [PublicController::class, 'home'])->name('home');
-
-// ЧПУ: /news/2-zagolovok-statyi. Резолвим по id внутри контроллера,
-// поэтому параметр — строка, а не {article}.
 Route::get('/news/{slug}', [PublicController::class, 'show'])->name('article.show');
-
 Route::get('/category/{slug}', [PublicController::class, 'category'])->name('category');
 
 Route::get('/fixtures/international', [PublicController::class, 'internationalFixtures'])
@@ -39,9 +35,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('run/scrape-fixtures', [DashboardController::class, 'scrapeFixtures'])->name('run.scrapeFixtures');
     Route::post('run/sync-standings', [DashboardController::class, 'syncStandings'])->name('run.syncStandings');
     Route::post('run/sync-transfers', [DashboardController::class, 'syncTransfers'])->name('run.syncTransfers');
+    Route::post('run/sync-euro', [DashboardController::class, 'syncEuro'])->name('run.syncEuro');
 
-    // В админке статьи резолвим ПО ID (:id), а не по slug, чтобы ссылки
-    // в панели не зависели от заголовка и не редиректили.
+    // Статьи резолвятся ПО ID (slug используется только на публичной части).
     Route::get('articles', [ArticleController::class, 'index'])->name('articles');
     Route::get('articles/{article:id}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
     Route::post('articles/{article:id}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');

@@ -31,6 +31,29 @@
         </form>
     </div>
 
+    {{-- Загрузка еврокубков за выбранный сезон --}}
+    <div class="card">
+        <h3>🏆 Еврокубки за сезон</h3>
+        <p class="muted">
+            Загружает матчи «Ливерпуля» в Лиге чемпионов, Лиге Европы и Лиге конференций
+            за выбранный год. На бесплатном тарифе football-data.org стабильно доступна
+            только Лига чемпионов — остальные турниры могут вернуть «нет доступа».
+            Матчи текущего сезона появляются в API после жеребьёвки основного этапа.
+        </p>
+        <form method="post" action="{{ route('admin.run.syncEuro') }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            @csrf
+            <label style="margin:0;flex:0 0 auto">Сезон</label>
+            <select name="season" style="width:auto;min-width:150px">
+                @foreach($euroSeasons as $y)
+                    <option value="{{ $y }}" @selected($y === $currentSeason)>
+                        {{ $y }}/{{ substr((string)($y + 1), 2) }}
+                    </option>
+                @endforeach
+            </select>
+            <button class="btn primary">Загрузить еврокубки</button>
+        </form>
+    </div>
+
     @if($lfcRow)
         <div class="card">
             <h3>«Ливерпуль» в таблице — сезон {{ $season }}</h3>
@@ -58,7 +81,7 @@
         <h3>Трансферы</h3>
         <p class="muted">
             Записей в базе: <strong>{{ $transferCount }}</strong>.
-            Источник — API-Football. <a href="{{ route('transfers') }}" target="_blank">Открыть страницу на сайте ↗</a>
+            <a href="{{ route('transfers') }}" target="_blank">Открыть страницу на сайте ↗</a>
         </p>
     </div>
 
