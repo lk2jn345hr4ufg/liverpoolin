@@ -10,18 +10,28 @@
                      font-size:clamp(26px,4.4vw,42px);letter-spacing:1px;line-height:1}
         .pagehead .intro{color:var(--muted);font-size:15px;max-width:620px;margin-top:10px}
 
-        /* Навигация по сезонам */
+        /* Календарь / диапазон дат */
+        .cal{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:22px 0 0}
+        .cal .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+        .cal form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+        .cal .fld{display:flex;flex-direction:column;gap:4px}
+        .cal label{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+        .cal input[type=date]{border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:inherit;
+             background:var(--paper);color:var(--ink);min-width:150px}
+        .cal .go{background:var(--red);color:#fff;border:0;border-radius:6px;padding:9px 16px;
+             font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.6px;cursor:pointer}
+        .cal .go:hover{background:var(--wine)}
+
+        /* Навигация по сезонам (еврокубки) */
         .seasonnav{display:flex;align-items:center;gap:6px;margin:22px 0 0;flex-wrap:wrap}
         .seasonnav .arrow{width:34px;height:34px;border-radius:6px;border:1px solid var(--line);
-             background:var(--card);display:flex;align-items:center;justify-content:center;
-             font-size:16px;font-weight:800;color:var(--ink);flex:0 0 auto}
+             background:var(--card);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex:0 0 auto}
         .seasonnav .arrow:hover{border-color:var(--red);color:var(--red)}
         .seasonnav .arrow.off{opacity:.35;pointer-events:none}
-        .seasonnav .cur{font-family:var(--display);font-size:22px;letter-spacing:1px;
-             padding:0 12px;min-width:120px;text-align:center}
+        .seasonnav .cur{font-family:var(--display);font-size:22px;letter-spacing:1px;padding:0 12px;min-width:120px;text-align:center}
         .seasonnav .pick{display:flex;gap:6px;flex-wrap:wrap;margin-left:8px}
 
-        .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:20px 0 0}
+        .summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:18px 0 0}
         .sbox{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 8px;text-align:center}
         .sbox .n{font-family:var(--display);font-size:24px;line-height:1}
         .sbox .l{font-size:9.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:5px}
@@ -30,14 +40,12 @@
         .filters{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
 
         .month{display:flex;align-items:baseline;gap:12px;margin:28px 0 12px}
-        .month h2{font-family:var(--display);font-weight:400;text-transform:uppercase;
-                  font-size:17px;letter-spacing:1.2px;white-space:nowrap}
+        .month h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:17px;letter-spacing:1.2px;white-space:nowrap}
         .month .rule{flex:1;height:2px;background:var(--line)}
         .month .cnt{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.5px}
 
         .fx{display:flex;flex-direction:column;gap:8px}
-        .m{background:var(--card);border:1px solid var(--line);border-left:4px solid #d9d3c9;
-           border-radius:5px;padding:12px 14px;display:flex;align-items:center;gap:14px}
+        .m{background:var(--card);border:1px solid var(--line);border-left:4px solid #d9d3c9;border-radius:5px;padding:12px 14px;display:flex;align-items:center;gap:14px}
         .m.next{border-left-color:var(--gold);background:#fffdf6}
         .m.win{border-left-color:#1a7f4b} .m.draw{border-left-color:#c9a227} .m.loss{border-left-color:var(--red)}
         .m .date{flex:0 0 64px;text-align:center;line-height:1.15}
@@ -48,21 +56,19 @@
         .m .teams{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:15px;font-weight:700;line-height:1.3}
         .m .teams .t{min-width:0;overflow-wrap:anywhere}
         .m .teams .us{color:var(--red)}
-        .m .sc{font-family:var(--display);font-size:17px;letter-spacing:1px;
-               background:var(--wine);color:#fff;border-radius:3px;padding:1px 8px;flex:0 0 auto}
+        .m .sc{font-family:var(--display);font-size:17px;letter-spacing:1px;background:var(--wine);color:#fff;border-radius:3px;padding:1px 8px;flex:0 0 auto}
         .m .vs{color:#b9b0a6;font-weight:800;flex:0 0 auto}
         .m .sub{margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
         .m .comp{font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
         .m .side{flex:0 0 auto;margin-left:auto}
-        .flag{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
-              padding:3px 8px;border-radius:99px;white-space:nowrap}
-        .flag.h{background:#eaf1ff;color:#2b4d8f}
-        .flag.a{background:#f3efe8;color:#7a6a58}
-        .flag.pp{background:#fee2e2;color:#991b1b}
-        .flag.nx{background:var(--gold);color:var(--wine-2)}
+        .flag{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
+        .flag.h{background:#eaf1ff;color:#2b4d8f} .flag.a{background:#f3efe8;color:#7a6a58}
+        .flag.pp{background:#fee2e2;color:#991b1b} .flag.nx{background:var(--gold);color:var(--wine-2)}
 
         @media(max-width:640px){
             .summary{grid-template-columns:repeat(3,1fr)}
+            .cal form{flex-direction:column;align-items:stretch}
+            .cal input[type=date]{width:100%}
             .m{flex-wrap:wrap;gap:10px}
             .m .date{flex:0 0 auto;text-align:left;display:flex;align-items:baseline;gap:6px}
             .m .date .tt{margin-top:0}
@@ -81,24 +87,57 @@
         <p class="intro">{{ $intro }}</p>
     </div>
 
-    {{-- Навигация по сезонам — только на странице еврокубков --}}
+    {{-- Календарь: пресеты + произвольный диапазон дат --}}
+    @if($showCalendar)
+        @php
+            $today = now();
+            $p3 = ['from' => $today->toDateString(), 'to' => $today->copy()->addMonths(3)->toDateString()];
+            $pMonth = ['from' => $today->toDateString(), 'to' => $today->copy()->addMonth()->toDateString()];
+            $pPast = ['from' => $today->copy()->subMonths(3)->toDateString(), 'to' => $today->toDateString()];
+            $curFrom = request('from');
+            $curTo = request('to');
+            $isDefault = ! $isAll && ! $curFrom && ! $curTo;
+        @endphp
+        <div class="cal">
+            <div class="presets">
+                <a class="chip {{ $isDefault ? 'on' : '' }}"
+                   href="{{ route('fixtures', array_merge(['comp' => $activeComp], $p3)) }}">3 месяца вперёд</a>
+                <a class="chip {{ $curFrom === $pMonth['from'] && $curTo === $pMonth['to'] ? 'on' : '' }}"
+                   href="{{ route('fixtures', array_merge(['comp' => $activeComp], $pMonth)) }}">Ближайший месяц</a>
+                <a class="chip {{ $curFrom === $pPast['from'] && $curTo === $pPast['to'] ? 'on' : '' }}"
+                   href="{{ route('fixtures', array_merge(['comp' => $activeComp], $pPast)) }}">Прошедшие 3 месяца</a>
+                <a class="chip {{ $isAll ? 'on' : '' }}"
+                   href="{{ route('fixtures', ['comp' => $activeComp, 'range' => 'all']) }}">Весь сезон</a>
+            </div>
+
+            <form method="get" action="{{ route('fixtures') }}">
+                @if($activeComp)<input type="hidden" name="comp" value="{{ $activeComp }}">@endif
+                <div class="fld">
+                    <label for="from">С даты</label>
+                    <input type="date" id="from" name="from" value="{{ $curFrom ?: $fromDate->toDateString() }}">
+                </div>
+                <div class="fld">
+                    <label for="to">По дату</label>
+                    <input type="date" id="to" name="to" value="{{ $curTo ?: $toDate->toDateString() }}">
+                </div>
+                <button class="go" type="submit">Показать</button>
+            </form>
+        </div>
+    @endif
+
+    {{-- Навигация по сезонам — только на еврокубках --}}
     @if($isIntl && $seasons->isNotEmpty())
         @php
-            $idx      = $seasons->search($activeSeason);          // 0 = самый свежий
-            $newer    = $idx > 0 ? $seasons[$idx - 1] : null;     // сезон новее
-            $older    = $idx < $seasons->count() - 1 ? $seasons[$idx + 1] : null;
+            $idx   = $seasons->search($activeSeason);
+            $newer = $idx > 0 ? $seasons[$idx - 1] : null;
+            $older = $idx < $seasons->count() - 1 ? $seasons[$idx + 1] : null;
         @endphp
         <div class="seasonnav">
             <a class="arrow {{ $older === null ? 'off' : '' }}"
-               href="{{ $older !== null ? route('fixtures.international', ['season' => $older, 'comp' => $activeComp]) : '#' }}"
-               aria-label="Предыдущий сезон">‹</a>
-
+               href="{{ $older !== null ? route('fixtures.international', ['season' => $older, 'comp' => $activeComp]) : '#' }}">‹</a>
             <span class="cur">{{ $activeSeason }}/{{ substr((string)($activeSeason + 1), 2) }}</span>
-
             <a class="arrow {{ $newer === null ? 'off' : '' }}"
-               href="{{ $newer !== null ? route('fixtures.international', ['season' => $newer, 'comp' => $activeComp]) : '#' }}"
-               aria-label="Следующий сезон">›</a>
-
+               href="{{ $newer !== null ? route('fixtures.international', ['season' => $newer, 'comp' => $activeComp]) : '#' }}">›</a>
             @if($seasons->count() > 1)
                 <span class="pick">
                     @foreach($seasons as $s)
@@ -114,7 +153,7 @@
 
     @if($stats['total'] > 0)
         <div class="summary">
-            <div class="sbox"><div class="n">{{ $stats['total'] }}</div><div class="l">Всего</div></div>
+            <div class="sbox"><div class="n">{{ $stats['total'] }}</div><div class="l">Матчей</div></div>
             <div class="sbox"><div class="n">{{ $stats['upcoming'] }}</div><div class="l">Впереди</div></div>
             <div class="sbox w"><div class="n">{{ $stats['win'] }}</div><div class="l">Победы</div></div>
             <div class="sbox dr"><div class="n">{{ $stats['draw'] }}</div><div class="l">Ничьи</div></div>
@@ -139,9 +178,11 @@
     {{-- Фильтр по турниру для обычного расписания --}}
     @if(! $isIntl && count($competitions))
         <div class="filters">
-            <a class="chip {{ empty($activeComp) ? 'on' : '' }}" href="{{ route('fixtures') }}">Все турниры</a>
+            <a class="chip {{ empty($activeComp) ? 'on' : '' }}"
+               href="{{ route('fixtures', array_filter(['from' => request('from'), 'to' => request('to'), 'range' => request('range')])) }}">Все турниры</a>
             @foreach($competitions as $c)
-                <a class="chip {{ $activeComp === $c ? 'on' : '' }}" href="{{ route('fixtures', ['comp' => $c]) }}">
+                <a class="chip {{ $activeComp === $c ? 'on' : '' }}"
+                   href="{{ route('fixtures', array_filter(['comp' => $c, 'from' => request('from'), 'to' => request('to'), 'range' => request('range')])) }}">
                     {{ \App\Models\Fixture::COMPETITION_NAMES[$c] ?? $c }}
                 </a>
             @endforeach
@@ -201,14 +242,12 @@
         <div class="empty" style="margin-top:26px">
             @if($isIntl)
                 @if($seasons->isEmpty())
-                    Еврокубковых матчей пока нет в базе. Загрузите их в админке
-                    («🏆 Еврокубки за сезон») — например, за прошлый сезон.
+                    Еврокубковых матчей пока нет в базе. Загрузите их в админке («🏆 Еврокубки за сезон»).
                 @else
                     В сезоне {{ $activeSeason }}/{{ substr((string)($activeSeason + 1), 2) }} матчей нет.
-                    Выберите другой сезон выше.
                 @endif
             @else
-                Расписание пустое. Запустите синхронизацию: <code>php artisan fixtures:sync</code>
+                В выбранном диапазоне матчей нет. Измените даты выше или нажмите «Весь сезон».
             @endif
         </div>
     @endforelse

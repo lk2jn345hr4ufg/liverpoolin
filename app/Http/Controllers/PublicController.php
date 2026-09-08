@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Fixture;
 use App\Models\Standing;
 use App\Models\Transfer;
+use Illuminate\Support\Carbon;
 
 class PublicController extends Controller
 {
@@ -61,18 +62,31 @@ class PublicController extends Controller
     }
 
     /**
-     * Расписание: самое актуальное сверху.
-     * Порядок: сначала предстоящие матчи (ближайший — первым),
-     * затем сыгранные по убыванию (самый свежий результат — выше).
+     * Расписание с окном по датам.
+     *
+     * По умолчанию: сегодня … +3 месяца.
+     * ?from=YYYY-MM-DD&to=YYYY-MM-DD — произвольный диапазон (календарь),
+     * показывает и предстоящие матчи, и результаты сыгранных в этом периоде.
+     * ?comp=... — дополнительный фильтр по турниру.
+     * ?range=all — показать все матчи без ограничения по датам.
      */
     public function fixtures()
     {
-        $comp = request('comp');
+        $comp  = request('comp');
+        $range = request('range');
 
-        $all = Fixture::query()
-            ->when($comp, fn ($q) => $q->where('competition', $comp))
-            ->get();
+        // Границы окна.
+        $default = $range !== 'all';
+        [$from, $to] = $this->resolveWindow();
 
+        $query = Fixture::query()
+            ->when($comp, fn ($q) => $q->where('competition', $comp));
+
+        if ($default) {
+            $query->whereBetween('kickoff_at', [$from, $to]);
+        }
+
+        $all     = $query->get();
         $ordered = $this->actualFirst($all);
 
         return view('public.fixtures', [
@@ -88,6 +102,11 @@ class PublicController extends Controller
             'seasons'      => collect(),
             'activeSeason' => null,
             'intlComps'    => collect(),
+            // для календаря:
+            'showCalendar' => true,
+            'fromDate'     => $from,
+            'toDate'       => $to,
+            'isAll'        => ! $default,
         ]);
     }
 
@@ -141,6 +160,10 @@ class PublicController extends Controller
             'seasons'      => $seasons,
             'activeSeason' => $activeSeason,
             'intlComps'    => $intlComps,
+            'showCalendar' => false,
+            'fromDate'     => null,
+            'toDate'       => null,
+            'isAll'        => false,
         ]);
     }
 
@@ -211,10 +234,33 @@ class PublicController extends Controller
     /* -------- helpers -------- */
 
     /**
-     * «Актуальное сверху»: будущие матчи по возрастанию (ближайший первым),
-     * затем прошедшие по убыванию (свежий результат первым).
-     * Матчи без даты — в самый конец.
+     * Границы окна дат из запроса или по умолчанию (сегодня … +3 месяца).
+     * Некорректные значения игнорируются и заменяются дефолтом.
+     *
+     * @return array{0:Carbon,1:Carbon}
      */
+    private function resolveWindow(): array
+    {
+        $from = rescue(
+            fn () => request('from') ? Carbon::parse(request('from'))->startOfDay() : null,
+            null,
+            false
+        ) ?: now()->startOfDay();
+
+        $to = rescue(
+            fn () => request('to') ? Carbon::parse(request('to'))->endOfDay() : null,
+            null,
+            false
+        ) ?: now()->copy()->addMonths(3)->endOfDay();
+
+        // Если перепутали местами — меняем.
+        if ($from->gt($to)) {
+            [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+        }
+
+        return [$from, $to];
+    }
+
     private function actualFirst($fixtures)
     {
         $now = now();
@@ -245,11 +291,6 @@ class PublicController extends Controller
             : $f->kickoff_at->year - 1;
     }
 
-    /**
-     * Группировка по месяцу с сохранением порядка коллекции.
-     * groupBy у Collection не пересортировывает элементы, поэтому
-     * порядок из actualFirst() сохраняется: будущие месяцы, затем прошлые.
-     */
     private function groupByMonth($fixtures)
     {
         return $fixtures->groupBy(function ($f) {
