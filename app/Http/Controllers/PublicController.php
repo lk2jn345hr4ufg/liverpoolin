@@ -60,24 +60,30 @@ class PublicController extends Controller
         return view('public.article', compact('article', 'categories'));
     }
 
+    /**
+     * Расписание: самое актуальное сверху.
+     * Порядок: сначала предстоящие матчи (ближайший — первым),
+     * затем сыгранные по убыванию (самый свежий результат — выше).
+     */
     public function fixtures()
     {
         $comp = request('comp');
 
         $all = Fixture::query()
             ->when($comp, fn ($q) => $q->where('competition', $comp))
-            ->orderBy('kickoff_at')
             ->get();
 
+        $ordered = $this->actualFirst($all);
+
         return view('public.fixtures', [
-            'grouped'      => $this->groupByMonth($all),
+            'grouped'      => $this->groupByMonth($ordered),
             'competitions' => $this->competitionOptions(),
             'activeComp'   => $comp,
             'nextFixture'  => Fixture::upcoming()->first(),
-            'stats'        => $this->summarise($all),
+            'stats'        => $this->summarise($ordered),
             'categories'   => Category::ordered()->get(),
             'title'        => 'Расписание',
-            'intro'        => 'Все матчи «Ливерпуля» в сезоне — прошедшие и предстоящие.',
+            'intro'        => 'Матчи «Ливерпуля»: ближайшие сверху, сыгранные ниже.',
             'isIntl'       => false,
             'seasons'      => collect(),
             'activeSeason' => null,
@@ -85,18 +91,11 @@ class PublicController extends Controller
         ]);
     }
 
-    /**
-     * Международные (еврокубковые) матчи с навигацией по сезонам.
-     *
-     * ?season=2024 — сезон (год старта); ?comp=... — фильтр по турниру.
-     * Сезон определяется по дате матча: июль–июнь.
-     */
     public function internationalFixtures()
     {
         $base = Fixture::international();
 
-        // Все матчи еврокубков — чтобы вычислить доступные сезоны и турниры.
-        $everything = (clone $base)->orderBy('kickoff_at')->get();
+        $everything = (clone $base)->get();
 
         $seasons = $everything
             ->map(fn ($f) => $this->seasonOf($f))
@@ -105,7 +104,6 @@ class PublicController extends Controller
             ->sortDesc()
             ->values();
 
-        // Активный сезон: из запроса, иначе самый свежий.
         $activeSeason = request('season');
         $activeSeason = ($activeSeason !== null && $seasons->contains((int) $activeSeason))
             ? (int) $activeSeason
@@ -118,7 +116,6 @@ class PublicController extends Controller
             ->when($activeComp, fn ($c) => $c->filter(fn ($f) => $f->competition === $activeComp))
             ->values();
 
-        // Турниры, представленные в выбранном сезоне.
         $intlComps = $everything
             ->when($activeSeason !== null, fn ($c) => $c->filter(fn ($f) => $this->seasonOf($f) === $activeSeason))
             ->pluck('competition')
@@ -126,11 +123,14 @@ class PublicController extends Controller
             ->unique()
             ->values();
 
-        $nextIntl = $everything->first(fn ($f) => $f->kickoff_at && $f->kickoff_at->isFuture());
+        $nextIntl = $everything
+            ->filter(fn ($f) => $f->kickoff_at && $f->kickoff_at->isFuture())
+            ->sortBy('kickoff_at')
+            ->first();
 
         return view('public.fixtures', [
-            'grouped'      => $this->groupByMonth($filtered),
-            'competitions' => collect(),   // не используется в intl-режиме
+            'grouped'      => $this->groupByMonth($this->actualFirst($filtered)),
+            'competitions' => collect(),
             'activeComp'   => $activeComp,
             'nextFixture'  => $nextIntl,
             'stats'        => $this->summarise($filtered),
@@ -210,7 +210,30 @@ class PublicController extends Controller
 
     /* -------- helpers -------- */
 
-    /** Сезон матча по дате: июль–декабрь → текущий год, январь–июнь → минус год. */
+    /**
+     * «Актуальное сверху»: будущие матчи по возрастанию (ближайший первым),
+     * затем прошедшие по убыванию (свежий результат первым).
+     * Матчи без даты — в самый конец.
+     */
+    private function actualFirst($fixtures)
+    {
+        $now = now();
+
+        $future = $fixtures
+            ->filter(fn ($f) => $f->kickoff_at && $f->kickoff_at->gte($now))
+            ->sortBy('kickoff_at')
+            ->values();
+
+        $past = $fixtures
+            ->filter(fn ($f) => $f->kickoff_at && $f->kickoff_at->lt($now))
+            ->sortByDesc('kickoff_at')
+            ->values();
+
+        $noDate = $fixtures->filter(fn ($f) => ! $f->kickoff_at)->values();
+
+        return $future->concat($past)->concat($noDate);
+    }
+
     private function seasonOf(Fixture $f): ?int
     {
         if (! $f->kickoff_at) {
@@ -222,6 +245,11 @@ class PublicController extends Controller
             : $f->kickoff_at->year - 1;
     }
 
+    /**
+     * Группировка по месяцу с сохранением порядка коллекции.
+     * groupBy у Collection не пересортировывает элементы, поэтому
+     * порядок из actualFirst() сохраняется: будущие месяцы, затем прошлые.
+     */
     private function groupByMonth($fixtures)
     {
         return $fixtures->groupBy(function ($f) {
