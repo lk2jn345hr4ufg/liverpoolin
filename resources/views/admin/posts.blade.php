@@ -13,7 +13,12 @@
             <tbody>
             @forelse($posts as $p)
                 <tr>
-                    <td>{{ \Illuminate\Support\Str::limit($p->title, 55) }}</td>
+                    <td>
+                        {{-- Заголовок кликабелен и ведёт на редактирование --}}
+                        <a href="{{ route('admin.posts.edit', $p) }}" style="font-weight:700;color:#1a1a1a;text-decoration:none">
+                            {{ \Illuminate\Support\Str::limit($p->title, 55) }}
+                        </a>
+                    </td>
                     <td>
                         @if($p->category)
                             <span class="badge" style="background:{{ $p->category->color }};color:#fff">{{ $p->category->name }}</span>
@@ -28,7 +33,7 @@
                     </td>
                     <td class="muted">{{ $p->published_at?->isoFormat('D MMM YYYY') ?? $p->created_at->isoFormat('D MMM YYYY') }}</td>
                     <td>
-                        <a class="btn ghost" href="{{ route('admin.posts.edit', $p) }}">Открыть</a>
+                        <a class="btn primary" href="{{ route('admin.posts.edit', $p) }}">✎ Редактировать</a>
                         @if($p->isPublished())
                             <a class="btn ghost" href="{{ route('posts.show', $p) }}" target="_blank">На сайте ↗</a>
                             <form class="inline" method="post" action="{{ route('admin.posts.unpublish', $p) }}">
@@ -36,7 +41,7 @@
                             </form>
                         @else
                             <form class="inline" method="post" action="{{ route('admin.posts.publish', $p) }}">
-                                @csrf<button class="btn primary">Опубликовать</button>
+                                @csrf<button class="btn ghost">Опубликовать</button>
                             </form>
                         @endif
                         <form class="inline" method="post" action="{{ route('admin.posts.destroy', $p) }}"
