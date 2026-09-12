@@ -16,12 +16,10 @@ class Post extends Model
     protected static function booted(): void
     {
         static::saving(function (Post $post) {
-            // Слаг из заголовка (транслитерация кириллицы), уникальный.
             if (blank($post->slug) || $post->isDirty('title')) {
                 $post->slug = static::uniqueSlug($post->title, $post->id);
             }
 
-            // Проставить дату публикации при первом переводе в published.
             if ($post->status === 'published' && blank($post->published_at)) {
                 $post->published_at = now();
             }
@@ -33,7 +31,7 @@ class Post extends Model
         return $this->belongsTo(Category::class);
     }
 
-    /* -------- Слаг / ЧПУ -------- */
+    /* -------- Слаг / привязка маршрутов -------- */
 
     public static function uniqueSlug(string $title, $ignoreId = null): string
     {
@@ -54,10 +52,14 @@ class Post extends Model
         return $slug;
     }
 
-    /** Публичные ссылки строятся по слагу; в админке привязка по id. */
-    public function getRouteKey()
+    /**
+     * Привязка маршрутов идёт по slug — и на публичной части, и в админке.
+     * Это делает генерацию ссылок и резолвинг согласованными
+     * (раньше ссылки строились по slug, а искалось по id → 404).
+     */
+    public function getRouteKeyName(): string
     {
-        return $this->slug ?: (string) $this->id;
+        return 'slug';
     }
 
     /* -------- Публикация -------- */

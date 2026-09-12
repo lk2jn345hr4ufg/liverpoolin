@@ -28,7 +28,7 @@ class PublicController extends Controller
         ));
     }
 
-    /* ==================== СТАТЬИ (отдельная сущность Post) ==================== */
+    /* ==================== СТАТЬИ (Post) ==================== */
 
     public function posts()
     {
@@ -40,10 +40,9 @@ class PublicController extends Controller
         ]);
     }
 
-    public function postShow(string $slug)
+    /** Привязка по slug (getRouteKeyName в модели). */
+    public function postShow(Post $post)
     {
-        $post = Post::where('slug', $slug)->firstOrFail();
-
         abort_unless($post->isPublished(), 404);
 
         $post->load('category');

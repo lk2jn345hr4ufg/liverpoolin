@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\Route;
 /* ---------------- Публичная часть ---------------- */
 Route::get('/', [PublicController::class, 'home'])->name('home');
 
-// Статьи (отдельная сущность Post)
+// Статьи (сущность Post). Привязка {post} — по slug (getRouteKeyName в модели).
 Route::get('/articles', [PublicController::class, 'posts'])->name('posts.index');
-Route::get('/articles/{slug}', [PublicController::class, 'postShow'])->name('posts.show');
+Route::get('/articles/{post}', [PublicController::class, 'postShow'])->name('posts.show');
 
 // Новости
 Route::get('/news/{slug}', [PublicController::class, 'show'])->name('article.show');
@@ -44,7 +44,6 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('run/sync-transfers', [DashboardController::class, 'syncTransfers'])->name('run.syncTransfers');
     Route::post('run/sync-euro', [DashboardController::class, 'syncEuro'])->name('run.syncEuro');
 
-    // Новости (агрегация + ИИ)
     Route::get('articles', [ArticleController::class, 'index'])->name('articles');
     Route::get('articles/{article:id}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
     Route::post('articles/{article:id}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');
@@ -53,7 +52,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('articles/{article:id}/unpublish', [ArticleController::class, 'unpublish'])->name('articles.unpublish');
     Route::delete('articles/{article:id}', [ArticleController::class, 'destroy'])->name('articles.destroy');
 
-    // Статьи (авторские, ручные)
+    // Статьи (авторские). Привязка {post} — по slug, как в модели.
     Route::get('posts', [PostController::class, 'index'])->name('posts');
     Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');
     Route::post('posts', [PostController::class, 'store'])->name('posts.store');
