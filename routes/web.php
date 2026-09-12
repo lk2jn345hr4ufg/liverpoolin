@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 /* ---------------- Публичная часть ---------------- */
 Route::get('/', [PublicController::class, 'home'])->name('home');
+Route::get('/articles', [PublicController::class, 'articles'])->name('articles.index');
 Route::get('/news/{slug}', [PublicController::class, 'show'])->name('article.show');
 Route::get('/category/{slug}', [PublicController::class, 'category'])->name('category');
 
@@ -37,7 +38,6 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::post('run/sync-transfers', [DashboardController::class, 'syncTransfers'])->name('run.syncTransfers');
     Route::post('run/sync-euro', [DashboardController::class, 'syncEuro'])->name('run.syncEuro');
 
-    // Статьи резолвятся ПО ID (slug используется только на публичной части).
     Route::get('articles', [ArticleController::class, 'index'])->name('articles');
     Route::get('articles/{article:id}/edit', [ArticleController::class, 'edit'])->name('articles.edit');
     Route::post('articles/{article:id}/ai-edit', [ArticleController::class, 'aiEdit'])->name('articles.aiEdit');

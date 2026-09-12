@@ -27,6 +27,29 @@ class PublicController extends Controller
         ));
     }
 
+    /**
+     * Раздел «Статьи» — полный архив всех опубликованных материалов
+     * с пагинацией. ?category=slug — фильтр по категории.
+     */
+    public function articles()
+    {
+        $categorySlug = request('category');
+        $category = $categorySlug ? Category::where('slug', $categorySlug)->first() : null;
+
+        $articles = Article::published()
+            ->with('category')
+            ->when($category, fn ($q) => $q->where('category_id', $category->id))
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('public.articles', [
+            'articles'    => $articles,
+            'categories'  => Category::ordered()->get(),
+            'activeCat'   => $category?->slug,
+            'total'       => Article::published()->count(),
+        ]);
+    }
+
     public function category(string $slug)
     {
         $category = Category::where('slug', $slug)->firstOrFail();
@@ -61,21 +84,11 @@ class PublicController extends Controller
         return view('public.article', compact('article', 'categories'));
     }
 
-    /**
-     * Расписание с окном по датам.
-     *
-     * По умолчанию: сегодня … +3 месяца.
-     * ?from=YYYY-MM-DD&to=YYYY-MM-DD — произвольный диапазон (календарь),
-     * показывает и предстоящие матчи, и результаты сыгранных в этом периоде.
-     * ?comp=... — дополнительный фильтр по турниру.
-     * ?range=all — показать все матчи без ограничения по датам.
-     */
     public function fixtures()
     {
         $comp  = request('comp');
         $range = request('range');
 
-        // Границы окна.
         $default = $range !== 'all';
         [$from, $to] = $this->resolveWindow();
 
@@ -102,7 +115,6 @@ class PublicController extends Controller
             'seasons'      => collect(),
             'activeSeason' => null,
             'intlComps'    => collect(),
-            // для календаря:
             'showCalendar' => true,
             'fromDate'     => $from,
             'toDate'       => $to,
@@ -233,12 +245,6 @@ class PublicController extends Controller
 
     /* -------- helpers -------- */
 
-    /**
-     * Границы окна дат из запроса или по умолчанию (сегодня … +3 месяца).
-     * Некорректные значения игнорируются и заменяются дефолтом.
-     *
-     * @return array{0:Carbon,1:Carbon}
-     */
     private function resolveWindow(): array
     {
         $from = rescue(
@@ -253,7 +259,6 @@ class PublicController extends Controller
             false
         ) ?: now()->copy()->addMonths(3)->endOfDay();
 
-        // Если перепутали местами — меняем.
         if ($from->gt($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
         }

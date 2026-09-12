@@ -4,6 +4,7 @@
         <a class="logo" href="{{ route('home') }}"><b>Liverpool</b><span>In</span></a>
         <nav class="nav">
             <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'on' : '' }}">Новости</a>
+            <a href="{{ route('articles.index') }}" class="{{ request()->routeIs('articles.index') ? 'on' : '' }}">Статьи</a>
             <a href="{{ route('fixtures') }}" class="{{ request()->routeIs('fixtures') ? 'on' : '' }}">Расписание</a>
             <a href="{{ route('fixtures.international') }}" class="{{ request()->routeIs('fixtures.international') ? 'on' : '' }}">Еврокубки</a>
             <a href="{{ route('table') }}" class="{{ request()->routeIs('table') ? 'on' : '' }}">Таблица</a>
