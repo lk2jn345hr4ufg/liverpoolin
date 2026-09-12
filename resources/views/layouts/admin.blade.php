@@ -55,7 +55,8 @@
         <a href="{{ route('admin.dashboard') }}" class="{{ $r==='admin.dashboard'?'active':'' }}">Панель</a>
 
         <div class="grp">Контент</div>
-        <a href="{{ route('admin.articles') }}" class="{{ str_starts_with($r,'admin.articles')?'active':'' }}">Статьи</a>
+        <a href="{{ route('admin.articles') }}" class="{{ str_starts_with($r,'admin.articles')?'active':'' }}">Новости</a>
+        <a href="{{ route('admin.posts') }}" class="{{ str_starts_with($r,'admin.posts')?'active':'' }}">Статьи</a>
         <a href="{{ route('admin.categories') }}" class="{{ str_starts_with($r,'admin.categories')?'active':'' }}">Категории</a>
 
         <div class="grp">Данные</div>

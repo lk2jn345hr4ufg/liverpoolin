@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Article;
 use App\Models\Category;
 use App\Models\Fixture;
+use App\Models\Post;
 use App\Models\Standing;
 use App\Models\Transfer;
 use Illuminate\Support\Carbon;
@@ -27,28 +28,33 @@ class PublicController extends Controller
         ));
     }
 
-    /**
-     * Раздел «Статьи» — полный архив всех опубликованных материалов
-     * с пагинацией. ?category=slug — фильтр по категории.
-     */
-    public function articles()
+    /* ==================== СТАТЬИ (отдельная сущность Post) ==================== */
+
+    public function posts()
     {
-        $categorySlug = request('category');
-        $category = $categorySlug ? Category::where('slug', $categorySlug)->first() : null;
+        $posts = Post::published()->with('category')->paginate(12);
 
-        $articles = Article::published()
-            ->with('category')
-            ->when($category, fn ($q) => $q->where('category_id', $category->id))
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('public.articles', [
-            'articles'    => $articles,
-            'categories'  => Category::ordered()->get(),
-            'activeCat'   => $category?->slug,
-            'total'       => Article::published()->count(),
+        return view('public.posts', [
+            'posts'      => $posts,
+            'categories' => Category::ordered()->get(),
         ]);
     }
+
+    public function postShow(string $slug)
+    {
+        $post = Post::where('slug', $slug)->firstOrFail();
+
+        abort_unless($post->isPublished(), 404);
+
+        $post->load('category');
+
+        return view('public.post', [
+            'post'       => $post,
+            'categories' => Category::ordered()->get(),
+        ]);
+    }
+
+    /* ==================== НОВОСТИ ==================== */
 
     public function category(string $slug)
     {
@@ -83,6 +89,8 @@ class PublicController extends Controller
 
         return view('public.article', compact('article', 'categories'));
     }
+
+    /* ==================== РАСПИСАНИЕ ==================== */
 
     public function fixtures()
     {
