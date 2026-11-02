@@ -46,7 +46,7 @@
         .m .date{flex:0 0 70px;text-align:center;line-height:1.15}
         .m .date .dd{font-family:var(--display);font-size:20px;letter-spacing:.5px}
         .m .date .mm{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
-        .m .date .tt{font-size:13px;font-weight:800;color:var(--ink);margin-top:3px}
+        .m .date .wd{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-top:2px}
         .m .mid{flex:1 1 auto;min-width:0}
         .m .teams{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:15px;font-weight:700;line-height:1.3}
         .m .teams .t{min-width:0;overflow-wrap:anywhere}
@@ -55,7 +55,8 @@
         .m .vs{color:#b9b0a6;font-weight:800;flex:0 0 auto}
         .m .sub{margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
         .m .comp{font-size:10px;font-weight:800;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
-        .m .side{flex:0 0 auto;margin-left:auto}
+        .m .side{flex:0 0 auto;margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+        .m .side .kick .ko{align-items:flex-end}
         .flag{font-size:9.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
         .flag.h{background:#eaf1ff;color:#2b4d8f} .flag.a{background:#f3efe8;color:#7a6a58}
         .flag.pp{background:#fee2e2;color:#991b1b} .flag.nx{background:var(--gold);color:var(--wine-2)}
@@ -66,9 +67,9 @@
             .cal input[type=date]{width:100%}
             .m{flex-wrap:wrap;gap:10px}
             .m .date{flex:0 0 auto;text-align:left;display:flex;align-items:baseline;gap:6px}
-            .m .date .tt{margin-top:0}
+            .m .date .wd{margin-top:0}
             .m .mid{flex:1 1 100%;order:3}
-            .m .side{order:2}
+            .m .side{order:2;flex-direction:row;align-items:center;gap:10px}
         }
     </style>
 </head>
@@ -128,7 +129,7 @@
         </div>
     @endif
 
-    <p class="tznote">🕑 Время матчей показано в вашем часовом поясе (<span id="tzlabel">определяется…</span>).</p>
+    <p class="tznote">🏟 — время по месту проведения матча &nbsp;·&nbsp; 🕑 — время у вас (<span id="tzlabel">определяется…</span>). Если пояса совпадают, показывается одно время.</p>
 
     @if($stats['total'] > 0)
         <div class="summary">
@@ -169,14 +170,11 @@
                     $cls     = $outcome ?: ($isNext ? 'next' : '');
                 @endphp
                 <div class="m {{ $cls }}">
+                    @php $vk = $f->venueKickoff(); @endphp
                     <div class="date">
-                        <div class="dd">{{ $f->kickoff_at?->format('d') ?? '—' }}</div>
-                        <div class="mm">{{ $f->kickoff_at?->isoFormat('MMM') ?? '' }}</div>
-                        <div class="tt">
-                            @if($f->kickoff_at)
-                                <span data-utc="{{ $f->kickoff_at->utc()->toIso8601String() }}">{{ $f->kickoff_at->utc()->format('H:i') }}</span>
-                            @else TBC @endif
-                        </div>
+                        <div class="dd">{{ $vk?->format('d') ?? '—' }}</div>
+                        <div class="mm">{{ $vk?->isoFormat('MMM') ?? '' }}</div>
+                        <div class="wd">{{ $vk?->isoFormat('dd') ?? '' }}</div>
                     </div>
 
                     <div class="mid">
@@ -192,11 +190,11 @@
                         <div class="sub">
                             <span class="comp">{{ $f->competitionName() }}</span>
                             @if($f->matchday)<span class="comp">· {{ $f->matchday }} тур</span>@endif
-                            @if($f->kickoff_at)<span class="comp">· {{ $f->kickoff_at->utc()->format('H:i') }} UTC</span>@endif
                         </div>
                     </div>
 
                     <div class="side">
+                        <div class="kick">@include('public.partials.kickoff', ['f' => $f])</div>
                         @if($f->status === 'postponed')
                             <span class="flag pp">Перенесён</span>
                         @elseif($isNext)
@@ -223,10 +221,6 @@
     @endforelse
 </div>
 
-<script>
-    try { document.getElementById('tzlabel').textContent =
-        (Intl.DateTimeFormat().resolvedOptions().timeZone || 'локальный').replace('_',' '); } catch(e){}
-</script>
 
 @include('public.partials.footer')
 </body>

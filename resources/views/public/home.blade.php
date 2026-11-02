@@ -39,7 +39,9 @@
         .fxrow .tm .us{color:var(--red)}
         .fxrow .sc{margin-left:auto;font-family:var(--display);font-size:16px;letter-spacing:1px;padding:1px 7px;border-radius:3px;flex:0 0 auto}
         .fxrow .sc.w{background:#1a7f4b;color:#fff} .fxrow .sc.d{background:#b8901f;color:#fff} .fxrow .sc.l{background:var(--red);color:#fff}
-        .fxrow .tt{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink);flex:0 0 auto}
+        .fxrow .tt{margin-left:auto;flex:0 0 auto;text-align:right}
+        .fxrow .tt .ko{align-items:flex-end}
+        .board .ko-venue{color:#fff} .board .ko-venue small{color:rgba(255,255,255,.7)} .board .ko-user{color:var(--gold)}
         .fxrow .cp{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
         .panel .none{padding:18px 16px;color:var(--muted);font-size:13px}
 
@@ -79,9 +81,8 @@
         @if($nextFixture)
             <span class="match">{{ $nextFixture->home_team }}<span class="vs">—</span>{{ $nextFixture->away_team }}</span>
             <span class="meta">
-                @if($nextFixture->kickoff_at)
-                    <span data-utc="{{ $nextFixture->kickoff_at->utc()->toIso8601String() }}" data-utc-full>{{ $nextFixture->kickoff_at->utc()->isoFormat('D MMM · HH:mm') }}</span>
-                @else Дата уточняется @endif
+                {{ $nextFixture->venueKickoff()?->isoFormat('dd, D MMM') ?? 'Дата уточняется' }} ·
+                @include('public.partials.kickoff', ['f' => $nextFixture, 'compact' => true])
                 @if($nextFixture->competition) — {{ $nextFixture->competitionName() }} @endif
             </span>
         @else
@@ -129,19 +130,15 @@
                 @forelse($upcoming as $f)
                     <div class="fxrow">
                         <div class="dt">
-                            <div class="d">{{ $f->kickoff_at?->format('d') ?? '—' }}</div>
-                            <div class="m">{{ $f->kickoff_at?->isoFormat('MMM') ?? '' }}</div>
+                            <div class="d">{{ $f->venueKickoff()?->format('d') ?? '—' }}</div>
+                            <div class="m">{{ $f->venueKickoff()?->isoFormat('MMM') ?? '' }}</div>
                         </div>
                         <div class="tm">
                             <span class="{{ $f->isHome() ? 'us' : '' }}">{{ $f->home_team }}</span><br>
                             <span class="{{ ! $f->isHome() ? 'us' : '' }}">{{ $f->away_team }}</span>
                             <div class="cp">{{ $f->competitionName() }}</div>
                         </div>
-                        <div class="tt">
-                            @if($f->kickoff_at)
-                                <span data-utc="{{ $f->kickoff_at->utc()->toIso8601String() }}">{{ $f->kickoff_at->utc()->format('H:i') }}</span>
-                            @else TBC @endif
-                        </div>
+                        <div class="tt">@include('public.partials.kickoff', ['f' => $f])</div>
                     </div>
                 @empty
                     <div class="none">Ближайшие матчи не загружены.</div>
@@ -262,9 +259,8 @@
                             <div class="comp">{{ $f->competitionName() }}</div>
                             <div class="teams">{{ $f->home_team }} — {{ $f->away_team }}</div>
                             <div class="when">
-                                @if($f->kickoff_at)
-                                    <span data-utc="{{ $f->kickoff_at->utc()->toIso8601String() }}" data-utc-full data-utc-tz>{{ $f->kickoff_at->utc()->isoFormat('dd, D MMMM · HH:mm') }}</span>
-                                @else Дата уточняется @endif
+                                {{ $f->venueKickoff()?->isoFormat('dd, D MMMM YYYY') ?? 'Дата уточняется' }}
+                                <div style="margin-top:4px">@include('public.partials.kickoff', ['f' => $f, 'compact' => true])</div>
                             </div>
                         </div>
                     @endforeach

@@ -5,30 +5,55 @@
     </div>
 </footer>
 
-{{-- Конвертация времени матчей в часовой пояс посетителя.
-     Элементы с data-utc (ISO-время в UTC) заполняются локальным временем браузера.
-     data-utc-full — добавляет дату, data-utc-tz — дописывает аббревиатуру пояса. --}}
+{{-- Время матчей в часовом поясе посетителя.
+     [data-user-time] — строка «🕑 у вас» в блоке времени матча.
+       Скрывается, если пояс посетителя совпадает с поясом стадиона.
+       Если дата у посетителя другая (поздний матч и т.п.) — добавляет дату.
+     [data-utc] — простое время в локальном поясе (используется в других местах). --}}
 <script>
 (function () {
-    try {
-        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-        document.querySelectorAll('[data-utc]').forEach(function (el) {
-            var iso = el.getAttribute('data-utc');
-            if (!iso) return;
-            var d = new Date(iso);
+    var userTz = '';
+    try { userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+
+    function localDateIso(d) {
+        // YYYY-MM-DD в поясе посетителя
+        var p = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        return p;
+    }
+
+    document.querySelectorAll('[data-user-time]').forEach(function (el) {
+        try {
+            var d = new Date(el.getAttribute('data-user-time'));
             if (isNaN(d.getTime())) return;
 
+            var venueTz = el.getAttribute('data-venue-tz') || '';
+            if (venueTz && userTz && venueTz === userTz) {
+                el.hidden = true;           // то же время, что на стадионе — не дублируем
+                return;
+            }
+
+            var txt = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            var venueDate = el.getAttribute('data-venue-date');
+            if (venueDate && localDateIso(d) !== venueDate) {
+                txt = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) + ', ' + txt;
+            }
+
+            var t = el.querySelector('.ko-t');
+            if (t) t.textContent = txt;
+        } catch (e) { /* остаётся UTC */ }
+    });
+
+    document.querySelectorAll('[data-utc]').forEach(function (el) {
+        try {
+            var d = new Date(el.getAttribute('data-utc'));
+            if (isNaN(d.getTime())) return;
             var opts = { hour: '2-digit', minute: '2-digit' };
-            if (el.hasAttribute('data-utc-full')) {
-                opts.day = '2-digit'; opts.month = 'short';
-            }
-            var txt = d.toLocaleString('ru-RU', opts);
-            if (el.hasAttribute('data-utc-tz') && tz) {
-                txt += ' (' + tz.split('/').pop().replace('_', ' ') + ')';
-            }
-            el.textContent = txt;
-            el.removeAttribute('title');
-        });
-    } catch (e) { /* молча — останется серверное UTC-время */ }
+            if (el.hasAttribute('data-utc-full')) { opts.day = '2-digit'; opts.month = 'short'; }
+            el.textContent = d.toLocaleString('ru-RU', opts);
+        } catch (e) {}
+    });
+
+    var lbl = document.getElementById('tzlabel');
+    if (lbl) lbl.textContent = userTz ? userTz.replace(/_/g, ' ') : 'локальный';
 })();
 </script>

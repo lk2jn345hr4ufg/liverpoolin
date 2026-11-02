@@ -13,11 +13,7 @@ class Fixture extends Model
         'kickoff_at' => 'datetime',
     ];
 
-    /**
-     * Ключевые слова еврокубков и международных клубных турниров.
-     * Сопоставление идёт по названию турнира из football-data.org,
-     * поэтому список — по подстроке и без учёта регистра.
-     */
+    /** Ключевые слова еврокубков / международных клубных турниров. */
     public const INTERNATIONAL_KEYWORDS = [
         'champions league',
         'europa league',
@@ -26,26 +22,38 @@ class Fixture extends Model
         'super cup',
         'club world cup',
         'intercontinental',
-        'friendly',            // товарищеские с зарубежными клубами
+        'friendly',
         'audi cup',
         'premier league summer series',
     ];
 
-    /** Русские названия турниров для отображения. */
+    /** Английские турниры — играются по лондонскому времени. */
+    public const ENGLISH_KEYWORDS = [
+        'premier league',
+        'fa cup',
+        'efl',
+        'league cup',
+        'carabao',
+        'community shield',
+        'championship',
+    ];
+
+    /** Русские названия турниров. */
     public const COMPETITION_NAMES = [
-        'Premier League'            => 'АПЛ',
-        'UEFA Champions League'     => 'Лига чемпионов',
-        'Champions League'          => 'Лига чемпионов',
-        'UEFA Europa League'        => 'Лига Европы',
-        'Europa League'             => 'Лига Европы',
-        'FA Cup'                    => 'Кубок Англии',
-        'EFL Cup'                   => 'Кубок лиги',
-        'League Cup'                => 'Кубок лиги',
-        'Carabao Cup'               => 'Кубок лиги',
-        'Community Shield'          => 'Суперкубок Англии',
-        'UEFA Super Cup'            => 'Суперкубок УЕФА',
-        'FIFA Club World Cup'       => 'Клубный чемпионат мира',
-        'Club Friendlies'           => 'Товарищеские матчи',
+        'Premier League'        => 'АПЛ',
+        'UEFA Champions League' => 'Лига чемпионов',
+        'Champions League'      => 'Лига чемпионов',
+        'UEFA Europa League'    => 'Лига Европы',
+        'Europa League'         => 'Лига Европы',
+        'UEFA Conference League'=> 'Лига конференций',
+        'FA Cup'                => 'Кубок Англии',
+        'EFL Cup'               => 'Кубок лиги',
+        'League Cup'            => 'Кубок лиги',
+        'Carabao Cup'           => 'Кубок лиги',
+        'Community Shield'      => 'Суперкубок Англии',
+        'UEFA Super Cup'        => 'Суперкубок УЕФА',
+        'FIFA Club World Cup'   => 'Клубный чемпионат мира',
+        'Club Friendlies'       => 'Товарищеские матчи',
     ];
 
     public static function makeFingerprint(string $home, string $away, ?string $kickoff): string
@@ -55,7 +63,6 @@ class Fixture extends Model
 
     /* -------- Отображение -------- */
 
-    /** Название турнира по-русски, если есть в словаре. */
     public function competitionName(): string
     {
         if (blank($this->competition)) {
@@ -67,13 +74,28 @@ class Fixture extends Model
 
     public function isInternational(): bool
     {
+        return $this->competitionMatches(self::INTERNATIONAL_KEYWORDS);
+    }
+
+    public function isEnglishCompetition(): bool
+    {
+        // «Premier League Summer Series» — это турне, не внутренний турнир.
+        if ($this->isInternational()) {
+            return false;
+        }
+
+        return $this->competitionMatches(self::ENGLISH_KEYWORDS);
+    }
+
+    private function competitionMatches(array $keywords): bool
+    {
         if (blank($this->competition)) {
             return false;
         }
 
         $c = Str::lower($this->competition);
 
-        foreach (self::INTERNATIONAL_KEYWORDS as $kw) {
+        foreach ($keywords as $kw) {
             if (str_contains($c, $kw)) {
                 return true;
             }
@@ -92,7 +114,6 @@ class Fixture extends Model
         return $this->home_score !== null && $this->away_score !== null;
     }
 
-    /** 'win' | 'draw' | 'loss' | null — с точки зрения «Ливерпуля». */
     public function outcome(): ?string
     {
         if (! $this->hasResult()) {
@@ -103,6 +124,58 @@ class Fixture extends Model
         $their = $this->isHome() ? $this->away_score : $this->home_score;
 
         return $our > $their ? 'win' : ($our === $their ? 'draw' : 'loss');
+    }
+
+    /* -------- Часовой пояс стадиона -------- */
+
+    /**
+     * Часовой пояс места проведения матча или null, если определить не удалось.
+     *
+     * 1) ручное значение venue_tz из админки;
+     * 2) английский турнир или домашний матч «Ливерпуля» → Лондон;
+     * 3) клуб-хозяин из справочника config/venues.php;
+     * 4) null — тогда показываем UTC.
+     */
+    public function venueTimezone(): ?string
+    {
+        if (filled($this->venue_tz)) {
+            return $this->venue_tz;
+        }
+
+        if ($this->isEnglishCompetition() || $this->isHome()) {
+            return 'Europe/London';
+        }
+
+        // Поиск с учётом регистра: «AZ» не должен совпасть с «Lazio».
+        foreach (config('venues.teams', []) as $needle => $tz) {
+            if (str_contains((string) $this->home_team, $needle)) {
+                return $tz;
+            }
+        }
+
+        return null;
+    }
+
+    /** Подпись города для пояса стадиона («Мадрид»), либо «UTC». */
+    public function venueCityLabel(): string
+    {
+        $tz = $this->venueTimezone();
+
+        if ($tz === null) {
+            return 'UTC';
+        }
+
+        return config("venues.cities.$tz") ?? str_replace('_', ' ', Str::afterLast($tz, '/'));
+    }
+
+    /** Время начала по месту проведения (копия, исходная дата не меняется). */
+    public function venueKickoff()
+    {
+        if (! $this->kickoff_at) {
+            return null;
+        }
+
+        return $this->kickoff_at->copy()->setTimezone($this->venueTimezone() ?? 'UTC');
     }
 
     /* -------- Скоупы -------- */
@@ -117,10 +190,6 @@ class Fixture extends Model
         return $q->whereNotNull('home_score')->orderByDesc('kickoff_at');
     }
 
-    /**
-     * Фильтр еврокубков средствами SQL (LIKE), чтобы не тянуть всё в память.
-     * Совпадает с isInternational(), но выполняется в базе.
-     */
     public function scopeInternational($q)
     {
         return $q->where(function ($sub) {
