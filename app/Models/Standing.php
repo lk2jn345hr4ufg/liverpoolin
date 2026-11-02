@@ -11,12 +11,25 @@ class Standing extends Model
 
     public const LIVERPOOL_TEAM_ID = 64;
 
-    /** Зоны АПЛ — для подсветки строк. */
+    /** Коды турниров → русские названия. */
+    public const COMP_NAMES = [
+        'PL' => 'АПЛ',
+        'CL' => 'Лига чемпионов',
+        'EL' => 'Лига Европы',
+        'EC' => 'Лига конференций',
+    ];
+
+    public static function compName(string $code): string
+    {
+        return self::COMP_NAMES[$code] ?? $code;
+    }
+
+    /** Зоны таблицы — для подсветки (актуально для АПЛ). */
     public function zone(): ?string
     {
         return match (true) {
-            $this->position <= 4  => 'ucl',      // Лига чемпионов
-            $this->position === 5 => 'uel',      // Лига Европы
+            $this->position <= 4  => 'ucl',
+            $this->position === 5 => 'uel',
             $this->position >= 18 => 'relegation',
             default               => null,
         };
@@ -28,7 +41,6 @@ class Standing extends Model
             || Str::contains(Str::lower($this->team_name), 'liverpool');
     }
 
-    /** Форма в виде массива: ['W','D','L',...] */
     public function formArray(): array
     {
         if (blank($this->form)) {
@@ -43,7 +55,15 @@ class Standing extends Model
 
     /* -------- Запросы -------- */
 
-    /** Список сезонов, по которым есть данные (свежие первыми). */
+    /** Коды турниров, по которым есть сохранённые таблицы. */
+    public static function competitions()
+    {
+        return static::query()
+            ->distinct()
+            ->orderByRaw("CASE competition_code WHEN 'PL' THEN 0 ELSE 1 END, competition_code")
+            ->pluck('competition_code');
+    }
+
     public static function seasons(string $code = 'PL')
     {
         return static::where('competition_code', $code)
@@ -52,7 +72,6 @@ class Standing extends Model
             ->pluck('season');
     }
 
-    /** Максимальный сохранённый тур для сезона. */
     public static function latestMatchday(int $season, string $code = 'PL'): int
     {
         return (int) static::where('competition_code', $code)
@@ -60,7 +79,6 @@ class Standing extends Model
             ->max('matchday');
     }
 
-    /** Таблица сезона на последний известный тур. */
     public static function tableFor(int $season, string $code = 'PL')
     {
         $md = static::latestMatchday($season, $code);
@@ -72,10 +90,6 @@ class Standing extends Model
             ->get();
     }
 
-    /**
-     * История позиции команды по турам сезона.
-     * @return array<int, array{matchday:int, position:int, points:int}>
-     */
     public static function historyFor(int $season, int $teamId, string $code = 'PL'): array
     {
         return static::where('competition_code', $code)

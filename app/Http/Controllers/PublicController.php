@@ -21,22 +21,24 @@ class PublicController extends Controller
 
         $categories = Category::ordered()->get();
 
-        /* ---------- Дашборд на главной ---------- */
+        /* ---------- Дашборд ---------- */
 
-        // Ближайшие матчи (расписание).
         $upcoming = Fixture::upcoming()->limit(5)->get();
         $nextFixture = $upcoming->first();
 
-        // Результаты за последний месяц.
         $recentResults = Fixture::query()
             ->whereNotNull('home_score')
             ->whereBetween('kickoff_at', [now()->subMonth(), now()])
             ->orderByDesc('kickoff_at')
             ->get();
 
-        // Турнирная таблица АПЛ (последний сохранённый тур текущего сезона).
-        $season    = Standing::seasons()->first();
-        $standings = $season ? Standing::tableFor((int) $season) : collect();
+        // Таблица АПЛ.
+        $plSeason  = Standing::seasons('PL')->first();
+        $standings = $plSeason ? Standing::tableFor((int) $plSeason, 'PL') : collect();
+
+        // Таблица Лиги чемпионов (если загружена).
+        $clSeason    = Standing::seasons('CL')->first();
+        $clStandings = $clSeason ? Standing::tableFor((int) $clSeason, 'CL') : collect();
 
         return view('public.home', array_merge([
             'featured'      => $featured,
@@ -46,7 +48,7 @@ class PublicController extends Controller
             'nextFixture'   => $nextFixture,
             'recentResults' => $recentResults,
             'standings'     => $standings,
-            'standingSeason'=> $season,
+            'clStandings'   => $clStandings,
         ], $this->seo('home')));
     }
 
@@ -153,7 +155,7 @@ class PublicController extends Controller
             'stats'        => $this->summarise($ordered),
             'categories'   => Category::ordered()->get(),
             'title'        => 'Расписание',
-            'intro'        => 'Матчи «Ливерпуля»: ближайшие сверху, сыгранные ниже.',
+            'intro'        => 'Матчи «Ливерпуля»: ближайшие сверху, сыгранные ниже. Время — в вашем часовом поясе.',
             'isIntl'       => false,
             'seasons'      => collect(),
             'activeSeason' => null,
@@ -210,7 +212,7 @@ class PublicController extends Controller
             'stats'        => $this->summarise($filtered),
             'categories'   => Category::ordered()->get(),
             'title'        => 'Международные матчи',
-            'intro'        => 'Еврокубки «Ливерпуля»: Лига чемпионов, Лига Европы, Лига конференций и Суперкубок УЕФА.',
+            'intro'        => 'Еврокубки «Ливерпуля». Время — в вашем часовом поясе.',
             'isIntl'       => true,
             'seasons'      => $seasons,
             'activeSeason' => $activeSeason,
@@ -222,29 +224,38 @@ class PublicController extends Controller
         ], $this->seo('euro')));
     }
 
+    /* ==================== ТУРНИРНАЯ ТАБЛИЦА ==================== */
+
     public function table()
     {
-        $seasons = Standing::seasons();
+        $comps = Standing::competitions();
 
-        if ($seasons->isEmpty()) {
+        if ($comps->isEmpty()) {
             return view('public.table', array_merge([
-                'rows' => collect(), 'seasons' => $seasons, 'season' => null,
+                'rows' => collect(), 'seasons' => collect(), 'season' => null,
                 'matchday' => 0, 'history' => [], 'lfc' => null,
+                'comps' => collect(), 'code' => 'PL',
                 'categories' => Category::ordered()->get(),
             ], $this->seo('standings')));
         }
 
-        $season = (int) (request('season') ?: $seasons->first());
+        // Выбранный турнир.
+        $code = request('comp');
+        if (! $comps->contains($code)) {
+            $code = $comps->contains('PL') ? 'PL' : $comps->first();
+        }
 
+        $seasons = Standing::seasons($code);
+        $season  = (int) (request('season') ?: $seasons->first());
         if (! $seasons->contains($season)) {
             $season = (int) $seasons->first();
         }
 
-        $rows = Standing::tableFor($season);
+        $rows = Standing::tableFor($season, $code);
         $lfc  = $rows->first(fn ($r) => $r->isLiverpool());
 
         $meta = $this->seo('standings');
-        if ($lfc) {
+        if ($code === 'PL' && $lfc) {
             $meta['metaDescription'] .= " Сейчас «Ливерпуль» на {$lfc->position}-м месте, {$lfc->points} очк.";
         }
 
@@ -252,9 +263,11 @@ class PublicController extends Controller
             'rows'       => $rows,
             'seasons'    => $seasons,
             'season'     => $season,
-            'matchday'   => Standing::latestMatchday($season),
-            'history'    => Standing::historyFor($season, Standing::LIVERPOOL_TEAM_ID),
+            'matchday'   => Standing::latestMatchday($season, $code),
+            'history'    => $code === 'PL' ? Standing::historyFor($season, Standing::LIVERPOOL_TEAM_ID, $code) : [],
             'lfc'        => $lfc,
+            'comps'      => $comps,
+            'code'       => $code,
             'categories' => Category::ordered()->get(),
         ], $meta));
     }

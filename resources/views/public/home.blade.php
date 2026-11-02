@@ -23,7 +23,7 @@
         .splash .by{margin-top:14px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
 
         /* ---------- Дашборд ---------- */
-        .dash{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:18px;margin:10px 0 30px}
+        .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:18px;margin:10px 0 30px}
         .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
         .panel .ph{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:2px solid var(--red)}
         .panel .ph h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:16px;letter-spacing:1px}
@@ -39,7 +39,7 @@
         .fxrow .tm .us{color:var(--red)}
         .fxrow .sc{margin-left:auto;font-family:var(--display);font-size:16px;letter-spacing:1px;padding:1px 7px;border-radius:3px;flex:0 0 auto}
         .fxrow .sc.w{background:#1a7f4b;color:#fff} .fxrow .sc.d{background:#b8901f;color:#fff} .fxrow .sc.l{background:var(--red);color:#fff}
-        .fxrow .tt{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);flex:0 0 auto}
+        .fxrow .tt{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink);flex:0 0 auto}
         .fxrow .cp{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
         .panel .none{padding:18px 16px;color:var(--muted);font-size:13px}
 
@@ -55,6 +55,7 @@
         table.mini .zone.ucl{background:#1a56b8} table.mini .zone.uel{background:#f5b22d} table.mini .zone.rel{background:var(--red)}
         table.mini .crest{width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:6px;display:inline-block}
         table.mini .pts{font-weight:800}
+        .panel .scroll{max-height:360px;overflow:auto}
 
         .cols{display:grid;grid-template-columns:1fr 320px;gap:34px;padding-bottom:20px}
         .side h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:18px;letter-spacing:1px;padding-bottom:12px;border-bottom:3px solid var(--red);margin-bottom:14px}
@@ -65,9 +66,7 @@
         .fx .when{font-size:12px;color:var(--muted);font-weight:600}
         .side .allfx{display:inline-block;margin-top:14px;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--red)}
 
-        @media(max-width:900px){.dash{grid-template-columns:1fr 1fr}.dash .panel:nth-child(3){grid-column:1/-1}}
         @media(max-width:820px){.cols{grid-template-columns:1fr;gap:26px}}
-        @media(max-width:560px){.dash{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -80,7 +79,9 @@
         @if($nextFixture)
             <span class="match">{{ $nextFixture->home_team }}<span class="vs">—</span>{{ $nextFixture->away_team }}</span>
             <span class="meta">
-                {{ $nextFixture->kickoff_at?->isoFormat('dd, D MMM · HH:mm') ?? 'Дата уточняется' }}
+                @if($nextFixture->kickoff_at)
+                    <span data-utc="{{ $nextFixture->kickoff_at->utc()->toIso8601String() }}" data-utc-full>{{ $nextFixture->kickoff_at->utc()->isoFormat('D MMM · HH:mm') }}</span>
+                @else Дата уточняется @endif
                 @if($nextFixture->competition) — {{ $nextFixture->competitionName() }} @endif
             </span>
         @else
@@ -136,7 +137,11 @@
                             <span class="{{ ! $f->isHome() ? 'us' : '' }}">{{ $f->away_team }}</span>
                             <div class="cp">{{ $f->competitionName() }}</div>
                         </div>
-                        <div class="tt">{{ $f->kickoff_at?->format('H:i') ?? 'TBC' }}</div>
+                        <div class="tt">
+                            @if($f->kickoff_at)
+                                <span data-utc="{{ $f->kickoff_at->utc()->toIso8601String() }}">{{ $f->kickoff_at->utc()->format('H:i') }}</span>
+                            @else TBC @endif
+                        </div>
                     </div>
                 @empty
                     <div class="none">Ближайшие матчи не загружены.</div>
@@ -170,26 +175,19 @@
             </div>
         </div>
 
-        {{-- Турнирная таблица --}}
+        {{-- Таблица АПЛ --}}
         <div class="panel">
             <div class="ph"><h2>Таблица АПЛ</h2><a href="{{ route('table') }}">Вся →</a></div>
-            <div class="bd">
+            <div class="bd scroll">
                 @if($standings->isNotEmpty())
                     <table class="mini">
-                        <thead>
-                            <tr><th class="pos">#</th><th class="tm">Клуб</th><th>И</th><th>Р</th><th>О</th></tr>
-                        </thead>
+                        <thead><tr><th class="pos">#</th><th class="tm">Клуб</th><th>И</th><th>Р</th><th>О</th></tr></thead>
                         <tbody>
                         @foreach($standings as $r)
-                            @php
-                                $zone = $r->position <= 4 ? 'ucl' : ($r->position === 5 ? 'uel' : ($r->position >= 18 ? 'rel' : ''));
-                            @endphp
+                            @php $zone = $r->position <= 4 ? 'ucl' : ($r->position === 5 ? 'uel' : ($r->position >= 18 ? 'rel' : '')); @endphp
                             <tr class="{{ $r->isLiverpool() ? 'lfc' : '' }}">
                                 <td class="pos"><span class="zone {{ $zone }}"></span>{{ $r->position }}</td>
-                                <td class="tm">
-                                    @if($r->team_crest)<img class="crest" src="{{ $r->team_crest }}" alt="" loading="lazy">@endif
-                                    {{ $r->team_short ?: $r->team_name }}
-                                </td>
+                                <td class="tm">@if($r->team_crest)<img class="crest" src="{{ $r->team_crest }}" alt="" loading="lazy">@endif{{ $r->team_short ?: $r->team_name }}</td>
                                 <td>{{ $r->played }}</td>
                                 <td>{{ $r->goal_difference > 0 ? '+' : '' }}{{ $r->goal_difference }}</td>
                                 <td class="pts">{{ $r->points }}</td>
@@ -202,6 +200,29 @@
                 @endif
             </div>
         </div>
+
+        {{-- Таблица Лиги чемпионов --}}
+        @if($clStandings->isNotEmpty())
+            <div class="panel">
+                <div class="ph"><h2>Лига чемпионов</h2><a href="{{ route('table', ['comp' => 'CL']) }}">Вся →</a></div>
+                <div class="bd scroll">
+                    <table class="mini">
+                        <thead><tr><th class="pos">#</th><th class="tm">Клуб</th><th>И</th><th>Р</th><th>О</th></tr></thead>
+                        <tbody>
+                        @foreach($clStandings as $r)
+                            <tr class="{{ $r->isLiverpool() ? 'lfc' : '' }}">
+                                <td class="pos">{{ $r->position }}</td>
+                                <td class="tm">@if($r->team_crest)<img class="crest" src="{{ $r->team_crest }}" alt="" loading="lazy">@endif{{ $r->team_short ?: $r->team_name }}</td>
+                                <td>{{ $r->played }}</td>
+                                <td>{{ $r->goal_difference > 0 ? '+' : '' }}{{ $r->goal_difference }}</td>
+                                <td class="pts">{{ $r->points }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
     </section>
 
     {{-- ============ Новости ============ --}}
@@ -240,7 +261,11 @@
                         <div class="item">
                             <div class="comp">{{ $f->competitionName() }}</div>
                             <div class="teams">{{ $f->home_team }} — {{ $f->away_team }}</div>
-                            <div class="when">{{ $f->kickoff_at?->isoFormat('dd, D MMMM YYYY · HH:mm') ?? 'Дата уточняется' }}</div>
+                            <div class="when">
+                                @if($f->kickoff_at)
+                                    <span data-utc="{{ $f->kickoff_at->utc()->toIso8601String() }}" data-utc-full data-utc-tz>{{ $f->kickoff_at->utc()->isoFormat('dd, D MMMM · HH:mm') }}</span>
+                                @else Дата уточняется @endif
+                            </div>
                         </div>
                     @endforeach
                 </div>
