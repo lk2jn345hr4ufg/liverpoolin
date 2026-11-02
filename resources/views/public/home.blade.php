@@ -22,6 +22,40 @@
         .splash p{font-size:16px;color:rgba(255,255,255,.85);max-width:620px}
         .splash .by{margin-top:14px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
 
+        /* ---------- Дашборд ---------- */
+        .dash{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:18px;margin:10px 0 30px}
+        .panel{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+        .panel .ph{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:2px solid var(--red)}
+        .panel .ph h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:16px;letter-spacing:1px}
+        .panel .ph a{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--red)}
+        .panel .bd{padding:6px 0;flex:1}
+
+        .fxrow{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line)}
+        .fxrow:last-child{border-bottom:0}
+        .fxrow .dt{flex:0 0 46px;text-align:center;line-height:1.1}
+        .fxrow .dt .d{font-family:var(--display);font-size:16px}
+        .fxrow .dt .m{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
+        .fxrow .tm{font-size:13px;font-weight:700;line-height:1.3;min-width:0}
+        .fxrow .tm .us{color:var(--red)}
+        .fxrow .sc{margin-left:auto;font-family:var(--display);font-size:16px;letter-spacing:1px;padding:1px 7px;border-radius:3px;flex:0 0 auto}
+        .fxrow .sc.w{background:#1a7f4b;color:#fff} .fxrow .sc.d{background:#b8901f;color:#fff} .fxrow .sc.l{background:var(--red);color:#fff}
+        .fxrow .tt{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);flex:0 0 auto}
+        .fxrow .cp{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.5px}
+        .panel .none{padding:18px 16px;color:var(--muted);font-size:13px}
+
+        table.mini{width:100%;border-collapse:collapse}
+        table.mini th{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted);letter-spacing:.5px;text-align:center;padding:7px 4px;border-bottom:1px solid var(--line)}
+        table.mini th.tm{text-align:left;padding-left:14px}
+        table.mini td{font-size:12.5px;text-align:center;padding:6px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+        table.mini td.tm{text-align:left;padding-left:14px;font-weight:700}
+        table.mini tr:last-child td{border-bottom:0}
+        table.mini tr.lfc{background:rgba(200,16,46,.07)} table.mini tr.lfc td.tm{color:var(--red)}
+        table.mini .pos{font-family:var(--display);width:26px}
+        table.mini .zone{display:inline-block;width:3px;height:16px;border-radius:2px;vertical-align:middle;margin-right:6px;background:transparent}
+        table.mini .zone.ucl{background:#1a56b8} table.mini .zone.uel{background:#f5b22d} table.mini .zone.rel{background:var(--red)}
+        table.mini .crest{width:15px;height:15px;object-fit:contain;vertical-align:middle;margin-right:6px;display:inline-block}
+        table.mini .pts{font-weight:800}
+
         .cols{display:grid;grid-template-columns:1fr 320px;gap:34px;padding-bottom:20px}
         .side h2{font-family:var(--display);font-weight:400;text-transform:uppercase;font-size:18px;letter-spacing:1px;padding-bottom:12px;border-bottom:3px solid var(--red);margin-bottom:14px}
         .fx{display:flex;flex-direction:column;gap:10px}
@@ -30,7 +64,10 @@
         .fx .teams{font-family:var(--display);font-size:16px;text-transform:uppercase;margin:3px 0 2px}
         .fx .when{font-size:12px;color:var(--muted);font-weight:600}
         .side .allfx{display:inline-block;margin-top:14px;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--red)}
+
+        @media(max-width:900px){.dash{grid-template-columns:1fr 1fr}.dash .panel:nth-child(3){grid-column:1/-1}}
         @media(max-width:820px){.cols{grid-template-columns:1fr;gap:26px}}
+        @media(max-width:560px){.dash{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -82,6 +119,92 @@
         @endif
     </section>
 
+    {{-- ============ ДАШБОРД ============ --}}
+    <section class="dash">
+        {{-- Расписание --}}
+        <div class="panel">
+            <div class="ph"><h2>Расписание</h2><a href="{{ route('fixtures') }}">Все →</a></div>
+            <div class="bd">
+                @forelse($upcoming as $f)
+                    <div class="fxrow">
+                        <div class="dt">
+                            <div class="d">{{ $f->kickoff_at?->format('d') ?? '—' }}</div>
+                            <div class="m">{{ $f->kickoff_at?->isoFormat('MMM') ?? '' }}</div>
+                        </div>
+                        <div class="tm">
+                            <span class="{{ $f->isHome() ? 'us' : '' }}">{{ $f->home_team }}</span><br>
+                            <span class="{{ ! $f->isHome() ? 'us' : '' }}">{{ $f->away_team }}</span>
+                            <div class="cp">{{ $f->competitionName() }}</div>
+                        </div>
+                        <div class="tt">{{ $f->kickoff_at?->format('H:i') ?? 'TBC' }}</div>
+                    </div>
+                @empty
+                    <div class="none">Ближайшие матчи не загружены.</div>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Результаты за месяц --}}
+        <div class="panel">
+            <div class="ph"><h2>Результаты</h2><a href="{{ route('fixtures', ['range' => 'all']) }}">Все →</a></div>
+            <div class="bd">
+                @forelse($recentResults as $f)
+                    @php $o = $f->outcome(); @endphp
+                    <div class="fxrow">
+                        <div class="dt">
+                            <div class="d">{{ $f->kickoff_at?->format('d') ?? '—' }}</div>
+                            <div class="m">{{ $f->kickoff_at?->isoFormat('MMM') ?? '' }}</div>
+                        </div>
+                        <div class="tm">
+                            <span class="{{ $f->isHome() ? 'us' : '' }}">{{ $f->home_team }}</span><br>
+                            <span class="{{ ! $f->isHome() ? 'us' : '' }}">{{ $f->away_team }}</span>
+                            <div class="cp">{{ $f->competitionName() }}</div>
+                        </div>
+                        <div class="sc {{ $o === 'win' ? 'w' : ($o === 'draw' ? 'd' : 'l') }}">
+                            {{ $f->home_score }}:{{ $f->away_score }}
+                        </div>
+                    </div>
+                @empty
+                    <div class="none">За последний месяц сыгранных матчей нет.</div>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Турнирная таблица --}}
+        <div class="panel">
+            <div class="ph"><h2>Таблица АПЛ</h2><a href="{{ route('table') }}">Вся →</a></div>
+            <div class="bd">
+                @if($standings->isNotEmpty())
+                    <table class="mini">
+                        <thead>
+                            <tr><th class="pos">#</th><th class="tm">Клуб</th><th>И</th><th>Р</th><th>О</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach($standings as $r)
+                            @php
+                                $zone = $r->position <= 4 ? 'ucl' : ($r->position === 5 ? 'uel' : ($r->position >= 18 ? 'rel' : ''));
+                            @endphp
+                            <tr class="{{ $r->isLiverpool() ? 'lfc' : '' }}">
+                                <td class="pos"><span class="zone {{ $zone }}"></span>{{ $r->position }}</td>
+                                <td class="tm">
+                                    @if($r->team_crest)<img class="crest" src="{{ $r->team_crest }}" alt="" loading="lazy">@endif
+                                    {{ $r->team_short ?: $r->team_name }}
+                                </td>
+                                <td>{{ $r->played }}</td>
+                                <td>{{ $r->goal_difference > 0 ? '+' : '' }}{{ $r->goal_difference }}</td>
+                                <td class="pts">{{ $r->points }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="none">Таблица пока не загружена.</div>
+                @endif
+            </div>
+        </div>
+    </section>
+
+    {{-- ============ Новости ============ --}}
     <div class="cols">
         <div>
             <div class="sec-head"><h2>Свежее</h2><span class="rule"></span></div>
@@ -111,9 +234,9 @@
 
         <aside class="side">
             <h2>Ближайшие матчи</h2>
-            @if($fixtures->isNotEmpty())
+            @if($upcoming->isNotEmpty())
                 <div class="fx">
-                    @foreach($fixtures as $f)
+                    @foreach($upcoming as $f)
                         <div class="item">
                             <div class="comp">{{ $f->competitionName() }}</div>
                             <div class="teams">{{ $f->home_team }} — {{ $f->away_team }}</div>

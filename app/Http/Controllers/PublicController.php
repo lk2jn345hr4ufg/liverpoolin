@@ -6,6 +6,7 @@ use App\Models\Article;
 use App\Models\Category;
 use App\Models\Fixture;
 use App\Models\Post;
+use App\Models\Setting;
 use App\Models\Standing;
 use App\Models\Transfer;
 use Illuminate\Support\Carbon;
@@ -18,14 +19,35 @@ class PublicController extends Controller
         $featured = $latest->first();
         $articles = $latest->skip(1)->values();
 
-        $fixtures    = Fixture::upcoming()->limit(5)->get();
-        $nextFixture = $fixtures->first();
-
         $categories = Category::ordered()->get();
 
-        return view('public.home', compact(
-            'featured', 'articles', 'fixtures', 'nextFixture', 'categories'
-        ));
+        /* ---------- Дашборд на главной ---------- */
+
+        // Ближайшие матчи (расписание).
+        $upcoming = Fixture::upcoming()->limit(5)->get();
+        $nextFixture = $upcoming->first();
+
+        // Результаты за последний месяц.
+        $recentResults = Fixture::query()
+            ->whereNotNull('home_score')
+            ->whereBetween('kickoff_at', [now()->subMonth(), now()])
+            ->orderByDesc('kickoff_at')
+            ->get();
+
+        // Турнирная таблица АПЛ (последний сохранённый тур текущего сезона).
+        $season    = Standing::seasons()->first();
+        $standings = $season ? Standing::tableFor((int) $season) : collect();
+
+        return view('public.home', array_merge([
+            'featured'      => $featured,
+            'articles'      => $articles,
+            'categories'    => $categories,
+            'upcoming'      => $upcoming,
+            'nextFixture'   => $nextFixture,
+            'recentResults' => $recentResults,
+            'standings'     => $standings,
+            'standingSeason'=> $season,
+        ], $this->seo('home')));
     }
 
     /* ==================== СТАТЬИ (Post) ==================== */
@@ -34,13 +56,12 @@ class PublicController extends Controller
     {
         $posts = Post::published()->with('category')->paginate(12);
 
-        return view('public.posts', [
+        return view('public.posts', array_merge([
             'posts'      => $posts,
             'categories' => Category::ordered()->get(),
-        ]);
+        ], $this->seo('posts')));
     }
 
-    /** Привязка по slug (getRouteKeyName в модели). */
     public function postShow(Post $post)
     {
         abort_unless($post->isPublished(), 404);
@@ -64,9 +85,15 @@ class PublicController extends Controller
             ->where('category_id', $category->id)
             ->paginate(12);
 
-        $categories = Category::ordered()->get();
-
-        return view('public.category', compact('category', 'articles', 'categories'));
+        return view('public.category', array_merge([
+            'category'   => $category,
+            'articles'   => $articles,
+            'categories' => Category::ordered()->get(),
+        ], [
+            'metaTitle'       => "{$category->name} — новости «Ливерпуля» | LiverpoolIn",
+            'metaDescription' => "Материалы «Ливерпуля» в категории «{$category->name}»: "
+                . ($category->description ?: 'свежие новости и статьи по теме.'),
+        ]));
     }
 
     public function show(string $slug)
@@ -109,11 +136,20 @@ class PublicController extends Controller
         $all     = $query->get();
         $ordered = $this->actualFirst($all);
 
-        return view('public.fixtures', [
+        $next = Fixture::upcoming()->first();
+
+        $meta = $this->seo('fixtures');
+        if ($next) {
+            $meta['metaDescription'] .= ' Ближайший матч: '
+                . $next->home_team . ' — ' . $next->away_team
+                . ($next->kickoff_at ? ', ' . $next->kickoff_at->isoFormat('D MMMM') : '') . '.';
+        }
+
+        return view('public.fixtures', array_merge([
             'grouped'      => $this->groupByMonth($ordered),
             'competitions' => $this->competitionOptions(),
             'activeComp'   => $comp,
-            'nextFixture'  => Fixture::upcoming()->first(),
+            'nextFixture'  => $next,
             'stats'        => $this->summarise($ordered),
             'categories'   => Category::ordered()->get(),
             'title'        => 'Расписание',
@@ -126,7 +162,7 @@ class PublicController extends Controller
             'fromDate'     => $from,
             'toDate'       => $to,
             'isAll'        => ! $default,
-        ]);
+        ], $meta));
     }
 
     public function internationalFixtures()
@@ -166,7 +202,7 @@ class PublicController extends Controller
             ->sortBy('kickoff_at')
             ->first();
 
-        return view('public.fixtures', [
+        return view('public.fixtures', array_merge([
             'grouped'      => $this->groupByMonth($this->actualFirst($filtered)),
             'competitions' => collect(),
             'activeComp'   => $activeComp,
@@ -183,7 +219,7 @@ class PublicController extends Controller
             'fromDate'     => null,
             'toDate'       => null,
             'isAll'        => false,
-        ]);
+        ], $this->seo('euro')));
     }
 
     public function table()
@@ -191,11 +227,11 @@ class PublicController extends Controller
         $seasons = Standing::seasons();
 
         if ($seasons->isEmpty()) {
-            return view('public.table', [
+            return view('public.table', array_merge([
                 'rows' => collect(), 'seasons' => $seasons, 'season' => null,
                 'matchday' => 0, 'history' => [], 'lfc' => null,
                 'categories' => Category::ordered()->get(),
-            ]);
+            ], $this->seo('standings')));
         }
 
         $season = (int) (request('season') ?: $seasons->first());
@@ -205,16 +241,22 @@ class PublicController extends Controller
         }
 
         $rows = Standing::tableFor($season);
+        $lfc  = $rows->first(fn ($r) => $r->isLiverpool());
 
-        return view('public.table', [
+        $meta = $this->seo('standings');
+        if ($lfc) {
+            $meta['metaDescription'] .= " Сейчас «Ливерпуль» на {$lfc->position}-м месте, {$lfc->points} очк.";
+        }
+
+        return view('public.table', array_merge([
             'rows'       => $rows,
             'seasons'    => $seasons,
             'season'     => $season,
             'matchday'   => Standing::latestMatchday($season),
             'history'    => Standing::historyFor($season, Standing::LIVERPOOL_TEAM_ID),
-            'lfc'        => $rows->first(fn ($r) => $r->isLiverpool()),
+            'lfc'        => $lfc,
             'categories' => Category::ordered()->get(),
-        ]);
+        ], $meta));
     }
 
     public function transfers()
@@ -236,7 +278,7 @@ class PublicController extends Controller
 
         $baseT = Transfer::query()->when(filled($season), fn ($q) => $q->where('season', (int) $season));
 
-        return view('public.transfers', [
+        return view('public.transfers', array_merge([
             'transfers'  => $transfers,
             'grouped'    => $transfers->groupBy(fn ($t) => $t->transfer_date
                 ? $t->transfer_date->isoFormat('MMMM YYYY')
@@ -247,7 +289,19 @@ class PublicController extends Controller
             'countIn'    => (clone $baseT)->where('direction', 'in')->count(),
             'countOut'   => (clone $baseT)->where('direction', 'out')->count(),
             'categories' => Category::ordered()->get(),
-        ]);
+        ], $this->seo('transfers')));
+    }
+
+    /* -------- SEO -------- */
+
+    private function seo(string $key): array
+    {
+        $cfg = config("seo.$key", []);
+
+        $title = Setting::get("seo.$key.title") ?: ($cfg['title'] ?? 'LiverpoolIn');
+        $desc  = Setting::get("seo.$key.description") ?: ($cfg['description'] ?? '');
+
+        return ['metaTitle' => $title, 'metaDescription' => $desc];
     }
 
     /* -------- helpers -------- */
