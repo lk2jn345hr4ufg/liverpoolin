@@ -14,6 +14,13 @@
 
 return [
 
+    /*
+     | Часовой пояс, по которому считается «сегодня» в блоке «Матчи сегодня».
+     | По умолчанию — Лондон (АПЛ). Для аудитории в Киеве/Никосии можно
+     | поставить 'Europe/Kyiv' — поздние матчи ЛЧ тогда тоже попадут в «сегодня».
+     */
+    'today_timezone' => 'Europe/London',
+
     'teams' => [
         // Испания
         'Real Madrid' => 'Europe/Madrid', 'Barcelona' => 'Europe/Madrid', 'Atlético' => 'Europe/Madrid',

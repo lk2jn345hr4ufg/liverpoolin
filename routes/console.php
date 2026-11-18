@@ -3,8 +3,8 @@
 use Illuminate\Support\Facades\Schedule;
 
 /*
- | Планировщик Laravel 11/12.
- | Продакшен — одна cron-строка:
+ | Планировщик Laravel 11+.
+ | На сервере достаточно одной cron-строки:
  |   * * * * * cd /path-to-project && php artisan schedule:run >> /dev/null 2>&1
  | Локально: php artisan schedule:work
  */
@@ -17,12 +17,15 @@ Schedule::command('articles:edit-pending --limit=15')
     ->everyFifteenMinutes()
     ->withoutOverlapping();
 
-// Матчи — дважды в день (football-data.org).
+// Матчи «Ливерпуля» — дважды в день.
 Schedule::command('fixtures:sync')->twiceDaily(7, 23);
 
-// Таблица — раз в день; снимки накапливают историю по турам.
+// Таблица — раз в день.
 Schedule::command('standings:sync')->dailyAt('23:30');
 
-// Трансферы — раз в день. У API-Football всего 100 запросов в сутки
-// на бесплатном тарифе, а синхронизация тратит 1, так что чаще не нужно.
+// Трансферы — раз в день (у API-Football 100 запросов в сутки).
 Schedule::command('transfers:sync')->dailyAt('05:00');
+
+// Матчи дня (АПЛ + ЛЧ) — каждые 10 минут, чтобы счёт и статус были свежими.
+// Один запрос; лимит football-data.org — 10 запросов в минуту.
+Schedule::command('matches:today')->everyTenMinutes()->withoutOverlapping();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Article;
 use App\Models\Category;
 use App\Models\Fixture;
+use App\Models\LeagueMatch;
 use App\Models\Post;
 use App\Models\Setting;
 use App\Models\Standing;
@@ -40,7 +41,15 @@ class PublicController extends Controller
         $clSeason    = Standing::seasons('CL')->first();
         $clStandings = $clSeason ? Standing::tableFor((int) $clSeason, 'CL') : collect();
 
+        // Матчи дня (АПЛ + ЛЧ): сначала по турниру, внутри — по времени.
+        $todayMatches = LeagueMatch::today()
+            ->orderBy('kickoff_at')
+            ->get()
+            ->sortBy(fn ($m) => LeagueMatch::COMP_ORDER[$m->competition_code] ?? 9)
+            ->groupBy('competition_code');
+
         return view('public.home', array_merge([
+            'todayMatches'  => $todayMatches,
             'featured'      => $featured,
             'articles'      => $articles,
             'categories'    => $categories,
